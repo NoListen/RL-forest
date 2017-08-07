@@ -23,23 +23,27 @@ class DDPG(object):
     def __init__(self, actor, critic, memory, observation_shape, action_shape, action_noise=None,
                  gamma=0.99, tau=0.001, batch_size=128, action_range=(-1., 1.), critic_l2_reg=0,
                  actor_lr=1e-4, critic_lr=1e-3, clip_norm=None, reward_scale=1.):
+        # train input
         self.obs0 = tf.placeholder(tf.float32, shape=(None,) + observation_shape, name='obs0')
         self.obs1 = tf.placeholder(tf.float32, shape=(None,) + observation_shape, name='obs1')
         self.terminals1 = tf.placeholder(tf.float32, shape=(None, 1), name='terminals1')
         self.rewards = tf.placeholder(tf.float32, shape=(None, 1), name='rewards')
         self.actions = tf.placeholder(tf.float32, shape=(None,) + action_shape, name='actions')
+
         # critic_target is used to update the Q value of critic
         self.critic_target = tf.placeholder(tf.float32, shape=(None, 1), name='critic_target')
 
         # Parameters.
-        self.gamma = gamma
+        self.gamma = gamma # discount factor.
         self.tau = tau  # soft update
         self.memory = memory
         self.action_noise = action_noise  # bool
+        # I want A zip( the function ) vector !
+        # I'll see it later.
         self.action_range = action_range  # action range. ( data type. vector range ? )
         self.critic = critic
         self.actor = actor
-        self.actor_lr = actor_lr
+        self.actor_lr = actor_lr # apply to optimizer.
         self.critic_lr = critic_lr
         self.clip_norm = clip_norm  # update the parameter
         self.reward_scale = reward_scale  # different from returns normalization.
@@ -48,13 +52,14 @@ class DDPG(object):
         self.critic_l2_reg = critic_l2_reg  # regularization. I think the probable form is weight decay.
 
         target_actor = copy(actor)
-        target_actor.name = 'target_actor'
+        target_actor.name = 'target_actor' # build the network only when _call is invoked
         self.target_actor = target_actor
         target_critic = copy(critic)
         target_critic.name = 'target_critic'
         self.target_critic = target_critic  # a network or an object.
 
         # Create networks and core TF parts that are shared across setup parts.
+        # When the network is too wide or deep, it tends to be overfitting.
         self.actor_tf = actor(self.obs0)
         self.critic_tf = critic(self.obs0, self.actions)
         self.critic_with_actor_tf = critic(self.obs0, self.actor_tf, reuse=True)
@@ -65,7 +70,7 @@ class DDPG(object):
         # Set up parts.
         self.setup_actor_optimizer()
         self.setup_critic_optimizer()
-        #  data
+        #  used to debug and follow the process.
         self.setup_stats()
         self.setup_target_network_updates()
 
@@ -79,18 +84,23 @@ class DDPG(object):
 
     def setup_actor_optimizer(self):
         print("setting up actor optimizer")
+        # because of reuse, no extra computation.
+        # gradient ascent. use Q's direction to update. Thus. the gradient need to be small.
+        # Maybe I should use advantage function.
+        # How to update advantage function. ( update Q and V simultaneously )
         self.actor_loss = -tf.reduce_mean(self.critic_with_actor_tf)
         actor_shapes = [var.get_shape().as_list() for var in self.actor.trainable_vars]
-        print('  actor params: {}'.format(actor_nb_params))
-        # actor_nb_params = sum([reduce(lambda x, y: x * y, shape) for shape in actor_shapes])
+        print('  actor shapes: {}'.format(actor_shapes))
         self.actor_optimizer = tf.train.AdamOptimizer(learning_rate=self.actor_lr,
                                                       beta1=0.9, beta2=0.999,epsilon=1e-8)
+        # different to flat gradient ?
         actor_grads = self.actor_optimizer.compute_gradients(self.actor_loss, var_list=self.actor.trainable_vars)
         if self.clip_norm:
             self.actor_grads = tf.clip_by_global_norm(actor_grads, self.clip_norm)
         else:
             self.actor_grads = actor_grads
 
+    # the update of value is almost independent of updating policy.
     def setup_critic_optimizer(self):
         print('setting up critic optimizer')
         # Most cases ( train ), off policy
@@ -157,6 +167,7 @@ class DDPG(object):
             action = self.sess.run(actor_tf, feed_dict=feed_dict)
             q = None
         action = action.flatten()
+        # I don't think the noise is adjusting to the action.
         if self.action_noise is not None and apply_noise:
             noise = self.action_noise()
             assert noise.shape == action.shape
