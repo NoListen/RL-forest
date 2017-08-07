@@ -32,7 +32,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, ac
     eval_episode_rewards_history = deque(maxlen=100)
     episode_rewards_history = deque(maxlen=100)
     # Config proto
-    with tf.session() as sess:
+    with tf.Session() as sess:
         # Prepare everything.
         agent.initialize(sess)
         sess.graph.finalize()

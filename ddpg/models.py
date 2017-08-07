@@ -9,7 +9,9 @@ class Model(object):
 
     @property
     def vars(self):
-        return tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=self.name)
+        vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=self.name)
+        res_vars = [var for var in vars if "Adam" not in var.name]
+        return res_vars
 
     @property
     def trainable_vars(self):

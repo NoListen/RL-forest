@@ -10,9 +10,13 @@ def get_target_updates(vars, target_vars, tau):
     print('setting up target updates ...')
     soft_updates = []
     init_updates = []
+    for i in vars:
+        print(i.name)
+    for i in target_vars:
+        print(i.name)
+    print(len(vars), len(target_vars))
     assert len(vars) == len(target_vars)
     for var, target_var in zip(vars, target_vars):
-        logger.info('  {} <- {}'.format(target_var.name, var.name))
         init_updates.append(tf.assign(target_var, var))
         soft_updates.append(tf.assign(target_var, (1. - tau) * target_var + tau * var))
     assert len(init_updates) == len(vars)
@@ -92,13 +96,14 @@ class DDPG(object):
         actor_shapes = [var.get_shape().as_list() for var in self.actor.trainable_vars]
         print('  actor shapes: {}'.format(actor_shapes))
         self.actor_optimizer = tf.train.AdamOptimizer(learning_rate=self.actor_lr,
-                                                      beta1=0.9, beta2=0.999,epsilon=1e-8)
-        # different to flat gradient ?
-        actor_grads = self.actor_optimizer.compute_gradients(self.actor_loss, var_list=self.actor.trainable_vars)
-        if self.clip_norm:
-            self.actor_grads = tf.clip_by_global_norm(actor_grads, self.clip_norm)
-        else:
-            self.actor_grads = actor_grads
+                                                      beta1=0.9, beta2=0.999,epsilon=1e-8).minimize(self.actor_loss)
+        
+	# different to flat gradient ?
+        #actor_grads = self.actor_optimizer.compute_gradients(self.actor_loss, var_list=self.actor.trainable_vars)
+        #if self.clip_norm:
+        #    self.actor_grads = tf.clip_by_global_norm(actor_grads, self.clip_norm)
+        #else:
+        #    self.actor_grads = actor_grads
 
     # the update of value is almost independent of updating policy.
     def setup_critic_optimizer(self):
@@ -119,12 +124,12 @@ class DDPG(object):
         critic_shapes = [var.get_shape().as_list() for var in self.critic.trainable_vars]
         print('  critic shapes: {}'.format(critic_shapes))
         self.critic_optimizer = tf.train.AdamOptimizer(learning_rate=self.critic_lr,
-                                                       beta1=0.9, beta2=0.999, epsilon=1e-8)
-        critic_grads = self.actor_optimizer.compute_gradients(self.critic_loss, self.critic.trainable_vars)
-        if self.clip_norm:
-            self.critic_grads = tf.clip_by_global_norm(critic_grads, self.clip_norm)
-        else:
-            self.critic_grads = critic_grads
+                                                       beta1=0.9, beta2=0.999, epsilon=1e-8).minimize(self.critic_loss)
+        #critic_grads = self.critic_optimizer.compute_gradients(self.critic_loss, self.critic.trainable_vars)
+        #if self.clip_norm:
+        #    self.critic_grads = tf.clip_by_global_norm(critic_grads, self.clip_norm)
+        #else:
+        #    self.critic_grads = critic_grads
 
 
     def setup_stats(self):
@@ -210,8 +215,6 @@ class DDPG(object):
     def initialize(self, sess):
         self.sess = sess
         self.sess.run(tf.global_variables_initializer())
-        self.actor_optimizer.sync()  # sync what ?
-        self.critic_optimizer.sync()
         self.sess.run(self.target_init_updates)
 
     def update_target_net(self):
