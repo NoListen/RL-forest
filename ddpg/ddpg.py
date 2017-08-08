@@ -72,8 +72,9 @@ class DDPG(object):
         self.target_Q = self.rewards + (1. - self.terminals1) * gamma * Q_obs1
 
         # Set up parts.
-        self.setup_actor_optimizer()
         self.setup_critic_optimizer()
+        self.setup_actor_optimizer()
+
         #  used to debug and follow the process.
         self.setup_stats()
         self.setup_target_network_updates()
@@ -81,8 +82,10 @@ class DDPG(object):
     def setup_target_network_updates(self):
         # init & soft
         actor_init_updates, actor_soft_updates = get_target_updates(self.actor.vars, self.target_actor.vars, self.tau)
+
         critic_init_updates, critic_soft_updates = get_target_updates(self.critic.vars, self.target_critic.vars,
                                                                       self.tau)
+
         self.target_init_updates = [actor_init_updates, critic_init_updates]
         self.target_soft_updates = [actor_soft_updates, critic_soft_updates]
 
@@ -95,15 +98,19 @@ class DDPG(object):
         self.actor_loss = -tf.reduce_mean(self.critic_with_actor_tf)
         actor_shapes = [var.get_shape().as_list() for var in self.actor.trainable_vars]
         print('  actor shapes: {}'.format(actor_shapes))
-        self.actor_optimizer = tf.train.AdamOptimizer(learning_rate=self.actor_lr,
-                                                      beta1=0.9, beta2=0.999,epsilon=1e-8).minimize(self.actor_loss)
-        
-	# different to flat gradient ?
-        #actor_grads = self.actor_optimizer.compute_gradients(self.actor_loss, var_list=self.actor.trainable_vars)
-        #if self.clip_norm:
-        #    self.actor_grads = tf.clip_by_global_norm(actor_grads, self.clip_norm)
-        #else:
-        #    self.actor_grads = actor_grads
+        with tf.variable_scope('actor_optimizer'):
+            self.actor_optimizer = tf.train.AdamOptimizer(learning_rate=self.actor_lr,
+                                                      beta1=0.9, beta2=0.999,epsilon=1e-8)
+            for v in self.actor.trainable_vars:
+                print(v.name) 
+            actor_grads = tf.gradients(self.actor_loss, self.actor.trainable_vars)
+            if self.clip_norm:
+                self.actor_grads,_ = tf.clip_by_global_norm(actor_grads, self.clip_norm)
+            else:
+                self.actor_grads = actor_grads
+            grads_and_vars = list(zip(self.actor_grads, self.actor.trainable_vars))
+            self.actor_train_op = self.actor_optimizer.apply_gradients(grads_and_vars)
+            
 
     # the update of value is almost independent of updating policy.
     def setup_critic_optimizer(self):
@@ -123,14 +130,16 @@ class DDPG(object):
             self.critic_loss += critic_reg
         critic_shapes = [var.get_shape().as_list() for var in self.critic.trainable_vars]
         print('  critic shapes: {}'.format(critic_shapes))
-        self.critic_optimizer = tf.train.AdamOptimizer(learning_rate=self.critic_lr,
-                                                       beta1=0.9, beta2=0.999, epsilon=1e-8).minimize(self.critic_loss)
-        #critic_grads = self.critic_optimizer.compute_gradients(self.critic_loss, self.critic.trainable_vars)
-        #if self.clip_norm:
-        #    self.critic_grads = tf.clip_by_global_norm(critic_grads, self.clip_norm)
-        #else:
-        #    self.critic_grads = critic_grads
-
+        with tf.variable_scope('critic_optimizer'):
+            self.critic_optimizer = tf.train.AdamOptimizer(learning_rate=self.critic_lr,
+                                                       beta1=0.9, beta2=0.999, epsilon=1e-8)
+            critic_grads = tf.gradients(self.critic_loss, self.critic.trainable_vars)
+            if self.clip_norm:
+                self.critic_grads,_ = tf.clip_by_global_norm(critic_grads, self.clip_norm)
+            else:
+                self.critic_grads = critic_grads
+            grads_and_vars = list(zip(self.critic_grads, self.critic.trainable_vars))
+            self.critic_train_op = self.critic_optimizer.apply_gradients(grads_and_vars)
 
     def setup_stats(self):
         ops = []
@@ -201,7 +210,7 @@ class DDPG(object):
         })
 
         # Get all gradients and perform a synced update.
-        ops = [self.actor_optimizer, self.actor_loss, self.critic_optimizer, self.critic_loss]
+        ops = [self.actor_train_op, self.actor_loss, self.critic_train_op, self.critic_loss]
         _, actor_loss, _, critic_loss = self.sess.run(ops, feed_dict={
             self.obs0: batch['obs0'],
             self.actions: batch['actions'],

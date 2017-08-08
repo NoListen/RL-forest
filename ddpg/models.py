@@ -10,8 +10,8 @@ class Model(object):
     @property
     def vars(self):
         vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=self.name)
-        res_vars = [var for var in vars if "Adam" not in var.name]
-        return res_vars
+        vars_without_optimizer = [var for var in vars if 'optimizer' not in var.name]       
+        return vars_without_optimizer
 
     @property
     def trainable_vars(self):

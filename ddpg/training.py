@@ -77,7 +77,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, ac
 
                     episode_reward += r
                     episode_step += 1
-
+                    r = max(min(r, 1), -1)
                     # Book-keeping.
                     epoch_actions.append(action)
                     epoch_qs.append(q)
