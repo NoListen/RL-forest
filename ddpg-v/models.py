@@ -70,7 +70,7 @@ class Critic(Model):
 
             # add the value function. Value is updated according to states. ( Use the data to average)
             # slow update
-            v = tc.layer.dense(x, 64)
+            v = tf.layers.dense(x, 64)
             if self.layer_norm:
                 v = tc.layers.layer_norm(v, center=True, scale=True)
             v = tf.nn.relu(v)

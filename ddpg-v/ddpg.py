@@ -38,6 +38,7 @@ class DDPG(object):
         self.critic_target = tf.placeholder(tf.float32, shape=(None, 1), name='critic_target')
         # v1
         # v2 self.value_target = tf.placeholder(tf.float32, shape=(None, 1), name="value_target")
+        self.value_target = tf.placeholder(tf.float32, shape=(None, 1), name="value_target")
 
         # Parameters.
         self.gamma = gamma # discount factor.
@@ -70,9 +71,10 @@ class DDPG(object):
         self.critic_tf, self.value_tf = critic(self.obs0, self.actions)
         self.critic_with_actor_tf, self.value_with_actor_tf = critic(self.obs0, self.actor_tf, reuse=True)
 
-        Q_obs1, _ = target_critic(self.obs1, target_actor(self.obs1))
+        #Q_obs1, _ = target_critic(self.obs1, target_actor(self.obs1))
+        Q_obs1, V_obs1 = target_critic(self.obs1, target_actor(self.obs1))
         self.target_Q = self.rewards + (1. - self.terminals1) * gamma * Q_obs1
-
+        self.target_V = self.rewards + (1. - self.terminals1) * gamma * V_obs1 
         # Set up parts.
         self.setup_critic_optimizer()
         self.setup_actor_optimizer()
@@ -121,7 +123,7 @@ class DDPG(object):
         print('setting up critic optimizer')
         # Most cases ( train ), off policy
         self.critic_loss = tf.reduce_mean(tf.square(self.critic_tf - self.critic_target))
-        self.value_loss = tf.reduce_mean(tf.square(self.value_tf - self.critic_target))
+        self.value_loss = tf.reduce_mean(tf.square(self.value_tf - self.value_target))
         self.critic_total_loss = self.critic_loss + self.value_loss
         if self.critic_l2_reg > 0.:
             critic_reg_vars = [var for var in self.critic.trainable_vars if
@@ -209,18 +211,20 @@ class DDPG(object):
         # Get a batch.
         batch = self.memory.sample(batch_size=self.batch_size)
 
-        target_Q = self.sess.run(self.target_Q, feed_dict={
+        #target_Q = self.sess.run(self.target_Q, feed_dict={
+        target_Q, target_V = self.sess.run([self.target_Q, self.target_V], feed_dict={
             self.obs1: batch['obs1'],
             self.rewards: batch['rewards'],
             self.terminals1: batch['terminals1'].astype('float32'),
         })
 
         # Get all gradients and perform a synced update.
-        ops = [self.actor_train_op, self.actor_loss, self.critic_train_op, self.critic_loss]
+        ops = [self.actor_train_op, self.actor_loss, self.critic_train_op, self.critic_total_loss]
         _, actor_loss, _, critic_loss = self.sess.run(ops, feed_dict={
             self.obs0: batch['obs0'],
             self.actions: batch['actions'],
             self.critic_target: target_Q,
+            self.value_target: target_V
         })
         # self.actor_optimizer.update(actor_grads, stepsize=self.actor_lr)
         # self.critic_optimizer.update(critic_grads, stepsize=self.critic_lr)
