@@ -98,8 +98,6 @@ class DDPG(object):
         self.actor_loss = -tf.reduce_mean(self.critic_with_actor_tf)
         actor_shapes = [var.get_shape().as_list() for var in self.actor.trainable_vars]
         print('  actor shapes: {}'.format(actor_shapes))
-        for var in self.actor.trainable_vars:
-            print(var.name, "trainable")
         with tf.variable_scope('actor_optimizer'):
             self.actor_optimizer = tf.train.AdamOptimizer(learning_rate=self.actor_lr,
                                                       beta1=0.9, beta2=0.999,epsilon=1e-8)

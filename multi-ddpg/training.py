@@ -139,8 +139,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, ac
 
 
             combined_stats['rollout/avergae_return'] = np.mean(epoch_episode_rewards)
-            combined_stats['rollout/max_return'] = np.max(epoch_episode_rewards)
-            combined_stats['rollout/average_return_100'] = np.mean(np.mean(episode_rewards_history))
+            combined_stats['rollout/average_return over 100 episodes'] = np.mean(np.mean(episode_rewards_history))
             combined_stats['rollout/episode_steps'] = np.mean(epoch_episode_steps)
             combined_stats['rollout/episodes'] = epoch_episodes
             combined_stats['rollout/actions_mean'] = np.mean(epoch_actions)
