@@ -36,6 +36,8 @@ class DDPG(object):
 
         # critic_target is used to update the Q value of critic
         self.critic_target = tf.placeholder(tf.float32, shape=(None, 1), name='critic_target')
+        # v1
+        # v2 self.value_target = tf.placeholder(tf.float32, shape=(None, 1), name="value_target")
 
         # Parameters.
         self.gamma = gamma # discount factor.
@@ -65,10 +67,10 @@ class DDPG(object):
         # Create networks and core TF parts that are shared across setup parts.
         # When the network is too wide or deep, it tends to be overfitting.
         self.actor_tf = actor(self.obs0)
-        self.critic_tf = critic(self.obs0, self.actions)
-        self.critic_with_actor_tf = critic(self.obs0, self.actor_tf, reuse=True)
+        self.critic_tf, self.value_tf = critic(self.obs0, self.actions)
+        self.critic_with_actor_tf, self.value_with_actor_tf = critic(self.obs0, self.actor_tf, reuse=True)
 
-        Q_obs1 = target_critic(self.obs1, target_actor(self.obs1))
+        Q_obs1, _ = target_critic(self.obs1, target_actor(self.obs1))
         self.target_Q = self.rewards + (1. - self.terminals1) * gamma * Q_obs1
 
         # Set up parts.
@@ -95,7 +97,7 @@ class DDPG(object):
         # gradient ascent. use Q's direction to update. Thus. the gradient need to be small.
         # Maybe I should use advantage function.
         # How to update advantage function. ( update Q and V simultaneously )
-        self.actor_loss = -tf.reduce_mean(self.critic_with_actor_tf)
+        self.actor_loss = -tf.reduce_mean(self.critic_with_actor_tf - self.value_with_actor_tf)
         actor_shapes = [var.get_shape().as_list() for var in self.actor.trainable_vars]
         print('  actor shapes: {}'.format(actor_shapes))
         for var in self.actor.trainable_vars:
@@ -119,6 +121,8 @@ class DDPG(object):
         print('setting up critic optimizer')
         # Most cases ( train ), off policy
         self.critic_loss = tf.reduce_mean(tf.square(self.critic_tf - self.critic_target))
+        self.value_loss = tf.reduce_mean(tf.square(self.value_tf - self.critic_target))
+        self.critic_total_loss = self.critic_loss + self.value_loss
         if self.critic_l2_reg > 0.:
             critic_reg_vars = [var for var in self.critic.trainable_vars if
                                'kernel' in var.name and 'output' not in var.name]
@@ -135,7 +139,7 @@ class DDPG(object):
         with tf.variable_scope('critic_optimizer'):
             self.critic_optimizer = tf.train.AdamOptimizer(learning_rate=self.critic_lr,
                                                        beta1=0.9, beta2=0.999, epsilon=1e-8)
-            critic_grads = tf.gradients(self.critic_loss, self.critic.trainable_vars)
+            critic_grads = tf.gradients(self.critic_total_loss, self.critic.trainable_vars)
             if self.clip_norm:
                 self.critic_grads,_ = tf.clip_by_global_norm(critic_grads, self.clip_norm)
             else:

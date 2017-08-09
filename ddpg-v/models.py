@@ -68,6 +68,15 @@ class Critic(Model):
                 x = tc.layers.layer_norm(x, center=True, scale=True)
             x = tf.nn.relu(x)
 
+            # add the value function. Value is updated according to states. ( Use the data to average)
+            # slow update
+            v = tc.layer.dense(x, 64)
+            if self.layer_norm:
+                v = tc.layers.layer_norm(v, center=True, scale=True)
+            v = tf.nn.relu(v)
+
+            v = tf.layers.dense(v, 1, kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
+
             # concat
             x = tf.concat([x, action], axis=-1)
 
@@ -78,7 +87,7 @@ class Critic(Model):
             x = tf.nn.relu(x)
 
             x = tf.layers.dense(x, 1, kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
-        return x
+        return x, v
 
     @property
     def output_vars(self):
