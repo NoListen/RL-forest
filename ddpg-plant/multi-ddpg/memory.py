@@ -2,6 +2,7 @@
 import numpy as np
 
 
+
 class RingBuffer(object):
     def __init__(self, maxlen, shape, dtype='float32'):
         self.maxlen = maxlen
