@@ -3,20 +3,27 @@ import time
 from collections import deque
 import pickle
 
-from ddpg import DDPG
+from multi_ddpg import DDPG
 import numpy as np
 import tensorflow as tf
 
+# change the training from step to be episode like training.
+# train the data while running in the environment !=
+# DON'T FEAR, WE ARE THE GPU !
+# TODO Add saving checkpoints fucntion.
+# save this session.
 
 def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, actor, critic,
           critic_l2_reg, actor_lr, critic_lr, action_noise, logdir,
-          gamma, clip_norm, nb_train_steps, nb_rollout_steps, nb_eval_steps, batch_size, memory,
+          gamma, clip_norm, nb_train_steps, nb_rollout_steps, nb_eval_steps, batch_size, memory, evaluation,
           tau=0.01, eval_env=None, save_iter=None):
 
+    # indeed [-1. 1]
     assert (np.abs(env.action_space.low) == env.action_space.high).all()  # we assume symmetric actions.
     max_action = env.action_space.high
     print('scaling actions by {} before executing in env'.format(max_action))
-    agent = DDPG(actor, critic, memory, env.observation_space.shape, env.action_space.shape,
+    # the observation shape doesn't means the shape of obs returned by the environment.
+    agent = DDPG(actor, critic, memory, env.observation_space.shape, env.mask_shape, env.action_space.shape,
                  gamma=gamma, tau=tau, batch_size=batch_size, action_noise=action_noise, critic_l2_reg=critic_l2_reg,
                  actor_lr=actor_lr, critic_lr=critic_lr, clip_norm=clip_norm,
                  reward_scale=reward_scale)
@@ -29,6 +36,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, ac
     else:
         saver = None
 
+    """ In marine's setting, each episode only lasts no more than 200 steps """
     eval_episode_rewards_history = deque(maxlen=100)
     episode_rewards_history = deque(maxlen=100)
     # Config proto
@@ -52,21 +60,21 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, ac
 
         epoch_episode_rewards = []
         epoch_episode_steps = []
-        epoch_start_time = time.time()
         epoch_actions = []
         epoch_qs = []
         epoch_episodes = 0
         for epoch in range(nb_epochs):
-            for cycle in range(nb_epoch_cycles):
+            epoch_start_time = time.time()
+            for cycle in range(nb_epoch_cycles): # well, each episode is considered as one rollout
                 # Perform rollouts.
-                for t_rollout in range(nb_rollout_steps):
+                while not done:
                     # Predict next action.
+                    # TODO the call function has been changed in the model file, so we need to change the ddpg file.
+
                     action, q = agent.pi(obs, apply_noise=True, compute_Q=True)
                     assert action.shape == env.action_space.shape
 
                     if render:
-                    # Execute next action.
-                    # normally, I won't choose to render
                         env.render()
                     assert max_action.shape == action.shape
                     new_obs, r, done, info = env.step( max_action * action)
@@ -81,6 +89,15 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, ac
                     # Book-keeping.
                     epoch_actions.append(action)
                     epoch_qs.append(q)
+                    # TODO revise the agent to include the mask.
+                    # TODO scale the data in the map.
+
+                    # TODO v1 outline of circle.
+                    # TODO v2 filled circle.
+                    # TODO v3 accumulated circle.
+
+                    # TODO Consider the enemy's data information, i.e. obs[1]
+                    # TODO Data is normalized and includes the scale.
                     agent.store_transition(obs, action, r, new_obs, done)
                     obs = new_obs
 
@@ -96,36 +113,39 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, ac
 
                         agent.reset()
                         obs = env.reset()
+                done = False
 
                 # Train.
                 epoch_actor_losses = []
                 epoch_critic_losses = []
-                epoch_adaptive_distances = []
                 for t_train in range(nb_train_steps):
                     cl, al = agent.train()
                     epoch_critic_losses.append(cl)
                     epoch_actor_losses.append(al)
                     agent.update_target_net()
 
-                # Evaluate.
+                # Evaluate. OBS reset has not been used yet.
                 eval_episode_rewards = []
                 eval_qs = []
-                if eval_env is not None:
+                if evaluation:
                     eval_episode_reward = 0.
-                    for t_rollout in range(nb_eval_steps):
-                        eval_action, eval_q = agent.pi(eval_obs, apply_noise=False, compute_Q=True)
-                        eval_obs, eval_r, eval_done, eval_info = eval_env.step(
-                            max_action * eval_action)  # scale for execution in env (as far as DDPG is concerned, every action is in [-1, 1])
-                        if render_eval:
-                            eval_env.render()
-                        eval_episode_reward += eval_r
+                    # TODO change the evaluation method.
+                    for t_rollout in range(nb_eval_circle):
+                        while not done:
+                            eval_action, eval_q = agent.pi(obs, apply_noise=False, compute_Q=True)
+                            obs, eval_r, done, eval_info = env.step(
+                                max_action * eval_action)  # scale for execution in env (as far as DDPG is concerned, every action is in [-1, 1])
+                            if render_eval:
+                                eval_env.render()
+                            eval_episode_reward += eval_r
 
-                        eval_qs.append(eval_q)
-                        if eval_done:
-                            eval_obs = eval_env.reset()
-                            eval_episode_rewards.append(eval_episode_reward)
-                            eval_episode_rewards_history.append(eval_episode_reward)
-                            eval_episode_reward = 0.
+                            eval_qs.append(eval_q)
+                            if done:
+                                obs = eval_env.reset()
+                                eval_episode_rewards.append(eval_episode_reward)
+                                eval_episode_rewards_history.append(eval_episode_reward)
+                                eval_episode_reward = 0.
+                        done = False
 
             # Log stats.
             epoch_train_duration = time.time() - epoch_start_time
@@ -145,6 +165,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, ac
             combined_stats['rollout/actions_mean'] = np.mean(epoch_actions)
             combined_stats['rollout/actions_std'] = np.std(epoch_actions)
             combined_stats['rollout/Q_mean'] = np.mean(epoch_qs)
+            combined_stats['rollout/duration'] = epoch_train_duration
 
             epoch_episode_rewards = []
             epoch_episode_steps = [] # How many steps each episode

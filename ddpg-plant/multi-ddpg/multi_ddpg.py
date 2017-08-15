@@ -23,13 +23,20 @@ def get_target_updates(vars, target_vars, tau):
     assert len(soft_updates) == len(vars)
     return tf.group(*init_updates), tf.group(*soft_updates)
 
+# PAY ATTENTION to observation_shape
 class DDPG(object):
-    def __init__(self, actor, critic, memory, observation_shape, action_shape, action_noise=None,
+    def __init__(self, actor, critic, memory, observation_shape, mask_shape, action_shape, action_noise=None,
                  gamma=0.99, tau=0.001, batch_size=128, action_range=(-1., 1.), critic_l2_reg=0,
-                 actor_lr=1e-4, critic_lr=1e-3, clip_norm=None, reward_scale=1.):
+                 actor_lr=1e-4, critic_lr=1e-3, clip_norm=None, reward_scale=1., n_hidden=64):
+        """n_hidden is for lstm unit"""
         # train input
         self.obs0 = tf.placeholder(tf.float32, shape=(None,) + observation_shape, name='obs0')
         self.obs1 = tf.placeholder(tf.float32, shape=(None,) + observation_shape, name='obs1')
+        # mask is defined outside the model
+        assert(len(mask_shape) > 0)
+        self.mask0 = tf.placeholder(tf.float32, shape=(None,) + mask_shape, name='mask0')
+        self.mask1 = tf.placeholder(tf.float32, shape=(None,) + mask_shape, name='mask1')
+
         self.terminals1 = tf.placeholder(tf.float32, shape=(None, 1), name='terminals1')
         self.rewards = tf.placeholder(tf.float32, shape=(None, 1), name='rewards')
         self.actions = tf.placeholder(tf.float32, shape=(None,) + action_shape, name='actions')
@@ -64,11 +71,12 @@ class DDPG(object):
 
         # Create networks and core TF parts that are shared across setup parts.
         # When the network is too wide or deep, it tends to be overfitting.
-        self.actor_tf = actor(self.obs0)
-        self.critic_tf = critic(self.obs0, self.actions)
-        self.critic_with_actor_tf = critic(self.obs0, self.actor_tf, reuse=True)
+        self.actor_tf = actor(self.obs0, n_hidden)
+        self.critic_tf = critic(self.obs0, self.actions, self.mask0, n_hidden)
+        self.critic_with_actor_tf = critic(self.obs0, self.actor_tf, self.mask0, n_hidden, reuse=True)
 
-        Q_obs1 = target_critic(self.obs1, target_actor(self.obs1))
+        # well, it's combined from several units.
+        Q_obs1 = target_critic(self.obs1, target_actor(self.obs1), self.mask1, n_hidden)
         self.target_Q = self.rewards + (1. - self.terminals1) * gamma * Q_obs1
 
         # Set up parts.
@@ -101,8 +109,7 @@ class DDPG(object):
         with tf.variable_scope('actor_optimizer'):
             self.actor_optimizer = tf.train.AdamOptimizer(learning_rate=self.actor_lr,
                                                       beta1=0.9, beta2=0.999,epsilon=1e-8)
-            for v in self.actor.trainable_vars:
-                print(v.name) 
+            # if apply gradients to specific variables, it will also update the critic network.
             actor_grads = tf.gradients(self.actor_loss, self.actor.trainable_vars)
             if self.clip_norm:
                 self.actor_grads,_ = tf.clip_by_global_norm(actor_grads, self.clip_norm)
@@ -153,6 +160,7 @@ class DDPG(object):
         #     ops += [tf.reduce_mean(self.obs_rms.mean), tf.reduce_mean(self.obs_rms.std)]
         #     names += ['obs_rms_mean', 'obs_rms_std']
 
+        # TODO add all values of all Q values.
         ops += [tf.reduce_mean(self.critic_tf)]
         names += ['reference_Q_mean']
         ops += [reduce_std(self.critic_tf)]
@@ -172,9 +180,12 @@ class DDPG(object):
         self.stats_names = names
 
     def pi(self, obs, apply_noise=True, compute_Q=True):
-
+        """ Obs is composed of [[myself_obs, mask], [enemy_obs, mask], map] """
+        # NOW i want to know the network's memorization ability. MODEL the enemy.
+        # dead one will be ignored by my environment.
         actor_tf = self.actor_tf
-        feed_dict = {self.obs0: [obs]}
+        # TODO utilize the map and enenmy's information in theb network computation.
+        feed_dict = {self.obs0: [obs[0][0]], self.mask0: [obs[0][1]]}
         if compute_Q:
             action, q = self.sess.run([actor_tf, self.critic_with_actor_tf], feed_dict=feed_dict)
         else:
@@ -194,7 +205,14 @@ class DDPG(object):
 
     def store_transition(self, obs0, action, reward, obs1, terminal1):
         reward *= self.reward_scale
-        self.memory.append(obs0, action, reward, obs1, terminal1)
+        # TODO store the enemy's information and the map
+        myself_obs0 = obs0[0][0]
+        mask0 = obs0[0][1]
+
+        myself_obs1 = obs1[0][0]
+        mask1 = obs1[0][1]
+        # TODO resue the space of observation and mask. CUT THE SPACE INTO THHE HALF OF THE ORIGIN.
+        self.memory.append(myself_obs0, mask0, action, reward, myself_obs1, mask1, terminal1)
         # moving average.
         # if self.normalize_observations:
         #     self.obs_rms.update(np.array([obs0]))
@@ -205,6 +223,7 @@ class DDPG(object):
 
         target_Q = self.sess.run(self.target_Q, feed_dict={
             self.obs1: batch['obs1'],
+            self.mask1: batch['mask1'],
             self.rewards: batch['rewards'],
             self.terminals1: batch['terminals1'].astype('float32'),
         })
@@ -213,6 +232,7 @@ class DDPG(object):
         ops = [self.actor_train_op, self.actor_loss, self.critic_train_op, self.critic_loss]
         _, actor_loss, _, critic_loss = self.sess.run(ops, feed_dict={
             self.obs0: batch['obs0'],
+            self.mask0: batch['mask0'],
             self.actions: batch['actions'],
             self.critic_target: target_Q,
         })
@@ -236,6 +256,7 @@ class DDPG(object):
             self.stats_sample = self.memory.sample(batch_size=self.batch_size)
         values = self.sess.run(self.stats_ops, feed_dict={
             self.obs0: self.stats_sample['obs0'],
+            self.mask0: self.stats_sample['mask0'],
             self.actions: self.stats_sample['actions'],
         })
 

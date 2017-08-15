@@ -7,8 +7,8 @@ import os
 from tempfile import mkdtemp
 import sys
 import json
+import gym_starcraft.envs.map_battle_env as sc
 
-# from baselines.common.mpi_fork import mpi_fork
 from misc_util import (
     set_global_seeds,
     boolean_flag )
@@ -22,16 +22,16 @@ import gym
 import tensorflow as tf
 
 
-def run(env_id, seed, noise_type, num_cpu, layer_norm, logdir, gym_monitor, evaluation, bind_to_core, **kwargs):
+def run(env_id, seed, noise_type, layer_norm, logdir, evaluation, nb_unit, ip, port, **kwargs):
     kwargs['logdir'] = logdir
 
+    # remove evaluation environment.
+    if env_id == "StarCraft":
+        env = sc.MapBattleEnv(ip, port)
+    else:
 
     # Create envs.
     env = gym.make(env_id)
-    if evaluation:
-        eval_env = gym.make(env_id)
-    else:
-        eval_env = None
 
     # Parse noise_type
     action_noise = None
@@ -52,35 +52,35 @@ def run(env_id, seed, noise_type, num_cpu, layer_norm, logdir, gym_monitor, eval
 
     # Configure components.
     memory = Memory(limit=int(1e6), action_shape=env.action_space.shape, observation_shape=env.observation_space.shape)
-    critic = Critic(layer_norm=layer_norm)
-    actor = Actor(nb_actions, layer_norm=layer_norm)
+    critic = Critic(layer_norm=layer_norm, time_step=nb_unit)
+    actor = Actor(nb_actions, layer_norm=layer_norm, time_step=nb_unit)
 
     # Seed everything to make things reproducible.
 
     tf.reset_default_graph()
     set_global_seeds(seed)
     env.seed(seed)
-    if eval_env is not None:
-        eval_env.seed(seed)
 
     # Disable logging for rank != 0 to avoid noise.
     start_time = time.time()
-    training.train(env=env, eval_env=eval_env, action_noise=action_noise, actor=actor, critic=critic, memory=memory, **kwargs)
+    training.train(env=env, action_noise=action_noise, actor=actor, critic=critic, memory=memory,
+                   evaluation=evaluation ,**kwargs)
 
     env.close()
-    if eval_env is not None:
-        eval_env.close()
     print('total runtime: {}s'.format(time.time() - start_time))
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--env-id', type=str, default='BipedalWalker-v2')
+    parser.add_argument('--env-id', type=str, default='StarCraft')
+    parser.add_argument('--ip', help="server ip")
+    parser.add_argument('--port', help="server port", type=int, default=11111)
+
+    parser.add_argument('--nb-units', type=int, default=5)
     boolean_flag(parser, 'render-eval', default=False)
     boolean_flag(parser, 'layer-norm', default=True)
     boolean_flag(parser, 'render', default=False)
-    parser.add_argument('--num-cpu', type=int, default=1)
     parser.add_argument('--seed', type=int, default=123457)
     parser.add_argument('--critic-l2-reg', type=float, default=1e-2)
     parser.add_argument('--batch-size', type=int, default=64)  # per MPI worker
@@ -97,9 +97,8 @@ def parse_args():
     parser.add_argument('--noise-type', type=str,
                         default='ou_0.1')  # choices are adaptive-param_xx, ou_xx, normal_xx, none
     parser.add_argument('--logdir', type=str, default=None)
-    boolean_flag(parser, 'gym-monitor', default=False)
     boolean_flag(parser, 'evaluation', default=True)
-    boolean_flag(parser, 'bind-to-core', default=False)
+
 
     return vars(parser.parse_args())
 

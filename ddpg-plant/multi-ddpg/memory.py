@@ -1,7 +1,7 @@
 # https://github.com/openai/baselines/baselines/ddpg/memory.py
 import numpy as np
 
-
+# TODO use the same storage space for both the obs0 and obs1
 
 class RingBuffer(object):
     def __init__(self, maxlen, shape, dtype='float32'):
@@ -42,10 +42,18 @@ def array_min2d(x):
 
 
 class Memory(object):
-    def __init__(self, limit, action_shape, observation_shape):
+    def __init__(self, limit, action_shape, observation_shape, mask_shape):
         self.limit = limit
 
+        # image may be necessary.
+        # the img_size should be read from config files.
+        # TODO add enemy_obs
+        # self.enemy_obs = RingBuffer(limit, shape=(MAP_SIZE, MAP_SIZE, 2))
+
         self.observations0 = RingBuffer(limit, shape=observation_shape)
+        # process the observation in different manners.
+        self.mask0 = RingBuffer(limit, shape=mask_shape)
+        self.mask1 = RingBuffer(limit, shape=mask_shape)
         self.actions = RingBuffer(limit, shape=action_shape)
         self.rewards = RingBuffer(limit, shape=(1,))
         self.terminals1 = RingBuffer(limit, shape=(1,))
@@ -57,6 +65,8 @@ class Memory(object):
 
         obs0_batch = self.observations0.get_batch(batch_idxs)
         obs1_batch = self.observations1.get_batch(batch_idxs)
+        mask0_batch = self.mask0.get_batch(batch_idxs)
+        mask1_batch = self.mask1.get_batch(batch_idxs)
         action_batch = self.actions.get_batch(batch_idxs)
         reward_batch = self.rewards.get_batch(batch_idxs)
         terminal1_batch = self.terminals1.get_batch(batch_idxs)
@@ -64,17 +74,21 @@ class Memory(object):
         result = {
             'obs0': array_min2d(obs0_batch),
             'obs1': array_min2d(obs1_batch),
+            'mask0': array_min2d(mask0_batch),
+            'mask1': array_min2d(mask1_batch),
             'rewards': array_min2d(reward_batch),
             'actions': array_min2d(action_batch),
             'terminals1': array_min2d(terminal1_batch),
         }
         return result
 
-    def append(self, obs0, action, reward, obs1, terminal1, training=True):
+    def append(self, obs0, mask0, action, reward, obs1, mask1, terminal1, training=True):
         if not training:
             return
 
         self.observations0.append(obs0)
+        self.mask0.append(mask0)
+        self.mask1.append(mask1)
         self.actions.append(action)
         self.rewards.append(reward)
         self.observations1.append(obs1)

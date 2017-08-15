@@ -91,7 +91,7 @@ class Critic(Model):
         self.layer_norm = layer_norm
         self.time_step = time_step
 
-    def __call__(self, obs, action, n_hidden=64, reuse=False):
+    def __call__(self, obs, action, mask, n_hidden=64, reuse=False):
         with tf.variable_scope(self.name) as scope:
             if reuse:
                 scope.reuse_variables()
@@ -143,7 +143,11 @@ class Critic(Model):
             p = tf.softmax(p)
             # TODO add the temperature
             # p = tf.softmax(p/t)
-            Q = tf.reduce_sum(tf.multiply(p, x), axis=1)
+            # TODO  v1 punish those probabilty to be zero
+            # TODO v2 punish the Q values to be zero
+            """ kill the gradient using the mask """
+            pQ = tf.multiply( tf.multiply(p,x), mask)
+            Q = tf.reduce_sum(pQ, axis=1)
         return Q
 
     @property
