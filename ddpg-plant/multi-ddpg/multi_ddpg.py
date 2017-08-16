@@ -222,14 +222,12 @@ class DDPG(object):
     def train(self):
         # Get a batch.
         batch = self.memory.sample(batch_size=self.batch_size)
-
         target_Q = self.sess.run(self.target_Q, feed_dict={
             self.obs1: batch['obs1'],
             self.mask1: batch['mask1'],
             self.rewards: batch['rewards'],
             self.terminals1: batch['terminals1'].astype('float32'),
         })
-
         # Get all gradients and perform a synced update.
         ops = [self.actor_train_op, self.actor_loss, self.critic_train_op, self.critic_loss]
         _, actor_loss, _, critic_loss = self.sess.run(ops, feed_dict={

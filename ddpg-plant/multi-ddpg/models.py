@@ -146,8 +146,12 @@ class Critic(Model):
             # TODO  v1 punish those probabilty to be zero
             # TODO v2 punish the Q values to be zero
             """ kill the gradient using the mask """
-            pQ = tf.multiply( tf.multiply(p,q), mask)
-            Q = tf.reduce_sum(pQ, axis=1)
+            #print(p.get_shape().as_list(), q.get_shape().as_list(), "pq")
+            pQ = tf.multiply(p,q)
+            pQ_mask = tf.multiply(pQ, mask)
+            #print(mask.get_shape().as_list(), pQ_mask.get_shape().as_list(), "mask")
+            Q = tf.reduce_sum(pQ_mask, axis=1, keep_dims=True)
+            #print(Q.get_shape().as_list, "Q")
         return Q
 
     @property

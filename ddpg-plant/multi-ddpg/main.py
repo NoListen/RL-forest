@@ -22,12 +22,12 @@ import gym
 import tensorflow as tf
 
 
-def run(env_id, seed, noise_type, layer_norm, logdir, evaluation, nb_units, ip, port, **kwargs):
+def run(env_id, seed, noise_type, layer_norm, logdir, evaluation, nb_units, ip, port, frame_skip, **kwargs):
     kwargs['logdir'] = logdir
     print("Well I am going to print the ip", ip)
     # remove evaluation environment.
     if env_id == "StarCraft":
-        env = sc.MapBattleEnv(ip, port)
+        env = sc.MapBattleEnv(ip, port, frame_skip = frame_skip)
     else:
         env = gym.make(env_id)
 
@@ -48,7 +48,6 @@ def run(env_id, seed, noise_type, layer_norm, logdir, evaluation, nb_units, ip, 
                                                         sigma=float(stddev) * np.ones(nb_actions))
         else:
             raise RuntimeError('unknown noise type "{}"'.format(current_noise_type))
-    print(action_noise.mu,"#LARRY#")
     # Configure components.
     memory = Memory(limit=int(1e6), action_shape=env.action_space.shape, observation_shape=env.observation_space.shape, mask_shape=env.mask_shape)
     critic = Critic(layer_norm=layer_norm, time_step=nb_units)
@@ -82,7 +81,7 @@ def parse_args():
     boolean_flag(parser, 'render', default=False)
     parser.add_argument('--seed', type=int, default=123457)
     parser.add_argument('--critic-l2-reg', type=float, default=1e-2)
-    parser.add_argument('--batch-size', type=int, default=64)  # per MPI worker
+    parser.add_argument('--batch-size', type=int, default=32)  # per MPI worker
     parser.add_argument('--actor-lr', type=float, default=2e-5)
     parser.add_argument('--critic-lr', type=float, default=1e-3)
     parser.add_argument('--gamma', type=float, default=0.99)
@@ -90,11 +89,12 @@ def parse_args():
     parser.add_argument('--clip-norm', type=float, default=None)
     parser.add_argument('--nb-epochs', type=int, default=500)  # with default settings, perform 1M steps total
     parser.add_argument('--nb-epoch-cycles', type=int, default=20)
-    parser.add_argument('--nb-train-steps', type=int, default=100)  # per epoch cycle and MPI worker
-    parser.add_argument('--nb-eval-cycles', type=int, default=1000)  # per epoch cycle and MPI worker
+    parser.add_argument('--nb-train-steps', type=int, default=32)  # per epoch cycle and MPI worker
+    parser.add_argument('--nb-eval-cycles', type=int, default=20)  # per epoch cycle and MPI worker
+    parser.add_argument('--frame-skip', type=int, default=2)
     # parser.add_argument('--nb-rollout-steps', type=int, default=300)  # per epoch cycle and MPI worker
     parser.add_argument('--noise-type', type=str,
-                        default='ou_0.1')  # choices are adaptive-param_xx, ou_xx, normal_xx, none
+                        default='ou_0.2')  # choices are adaptive-param_xx, ou_xx, normal_xx, none
     parser.add_argument('--logdir', type=str, default=None)
     boolean_flag(parser, 'evaluation', default=True)
 

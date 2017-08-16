@@ -58,6 +58,8 @@ class Memory(object):
         self.rewards = RingBuffer(limit, shape=(1,))
         self.terminals1 = RingBuffer(limit, shape=(1,))
         self.observations1 = RingBuffer(limit, shape=observation_shape)
+        self.length = 0
+
 
     def sample(self, batch_size):
         # Draw such that we always have a proceeding element.
@@ -85,7 +87,7 @@ class Memory(object):
     def append(self, obs0, mask0, action, reward, obs1, mask1, terminal1, training=True):
         if not training:
             return
-
+        self.length = min(self.limit, self.length+1)
         self.observations0.append(obs0)
         self.mask0.append(mask0)
         self.mask1.append(mask1)

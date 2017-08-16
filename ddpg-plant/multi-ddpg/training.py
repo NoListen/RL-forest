@@ -57,12 +57,15 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, ac
 
         epoch = 0
         start_time = time.time()
+        epoch_actor_losses = []
+        epoch_critic_losses = []
 
         epoch_episode_rewards = []
         epoch_episode_steps = []
         epoch_actions = []
         epoch_qs = []
         epoch_episodes = 0
+        log_file = open('log','a')
         for epoch in range(nb_epochs):
             epoch_start_time = time.time()
             for cycle in range(nb_epoch_cycles): # well, each episode is considered as one rollout
@@ -89,6 +92,13 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, ac
                     # Book-keeping.
                     epoch_actions.append(action)
                     epoch_qs.append(q)
+                    #print(t, done)
+                    if agent.memory.length > 50*batch_size:
+                        cl, al = agent.train()
+                        epoch_critic_losses.append(cl)
+                        epoch_actor_losses.append(al)
+                        agent.update_target_net()
+
                     # TODO revise the agent to include the mask.
                     # TODO scale the data in the map.
 
@@ -100,7 +110,6 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, ac
                     # TODO Data is normalized and includes the scale.
                     agent.store_transition(obs, action, r, new_obs, done)
                     obs = new_obs
-
                     if done:
                         # Episode done.
                         epoch_episode_rewards.append(episode_reward)
@@ -114,40 +123,39 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, ac
                         agent.reset()
                         obs = env.reset()
                 done = False
-
+                
+                
                 # Train.
-                epoch_actor_losses = []
-                epoch_critic_losses = []
-                for t_train in range(nb_train_steps):
-                    cl, al = agent.train()
-                    epoch_critic_losses.append(cl)
-                    epoch_actor_losses.append(al)
-                    agent.update_target_net()
-
+             #   for t_train in range(nb_train_steps):
+             #       cl, al = agent.train()
+             #       epoch_critic_losses.append(cl)
+             #       epoch_actor_losses.append(al)
+             #       agent.update_target_net()
                 # Evaluate. OBS reset has not been used yet.
-                eval_episode_rewards = []
-                eval_qs = []
-                if evaluation:
-                    eval_episode_reward = 0.
-                    # TODO change the evaluation method.
-                    for t_rollout in range(nb_eval_cycles):
-                        while not done:
-                            eval_action, eval_q = agent.pi(obs, apply_noise=False, compute_Q=True)
-                            obs, eval_r, done, eval_info = env.step(
-                                max_action * eval_action)  # scale for execution in env (as far as DDPG is concerned, every action is in [-1, 1])
-                            if render_eval:
-                                eval_env.render()
-                            eval_episode_reward += eval_r
-
-                            eval_qs.append(eval_q)
-                            if done:
-                                obs = eval_env.reset()
-                                eval_episode_rewards.append(eval_episode_reward)
-                                eval_episode_rewards_history.append(eval_episode_reward)
-                                eval_episode_reward = 0.
-                        done = False
-
-            # Log stats.
+            eval_wins = 0
+            eval_episode_rewards = []
+            eval_qs = []
+            if evaluation:
+               eval_episode_reward = 0.
+               # TODO change the evaluation method.
+               for t_rollout in range(nb_eval_cycles):
+                   while not done:
+                       eval_action, eval_q = agent.pi(obs, apply_noise=False, compute_Q=True)
+                       obs, eval_r, done, eval_info = env.step(
+                           max_action * eval_action)  # scale for execution in env (as far as DDPG is concerned, every action is in [-1, 1])
+                       if render_eval:
+                           eval_env.render()
+                       eval_episode_reward += eval_r
+                       eval_qs.append(eval_q)
+                       if done:
+                           if eval_episode_reward > 0:
+                               eval_wins += 1
+                           obs = env.reset()
+                           eval_episode_rewards.append(eval_episode_reward)
+                           eval_episode_rewards_history.append(eval_episode_reward)
+                           eval_episode_reward = 0.
+                   done = False
+           # Log stats.
             epoch_train_duration = time.time() - epoch_start_time
             duration = time.time() - start_time
             stats = agent.get_stats()
@@ -175,13 +183,16 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, ac
             # Train statistics.
             combined_stats['train/loss_actor'] = np.mean(epoch_actor_losses)
             combined_stats['train/loss_critic'] = np.mean(epoch_critic_losses)
+            epoch_actor_losses = []
+            epoch_critic_losses = []
 
             # Evaluation statistics.
-            if eval_env is not None:
+            if evaluation:
                 combined_stats['eval/return'] = np.mean(eval_episode_rewards)
                 combined_stats['eval/return_history'] = np.mean(np.mean(eval_episode_rewards_history))
                 combined_stats['eval/Q'] = np.mean(eval_qs)
                 combined_stats['eval/episodes'] = len(eval_episode_rewards)
+                combined_stats['eval/win_rate'] = float(eval_wins)/nb_eval_cycles
 
             # Total statistics.
             combined_stats['total/duration'] = duration
@@ -189,9 +200,10 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, ac
             combined_stats['total/episodes'] = np.mean(episodes)
             combined_stats['total/epochs'] = epoch + 1
             combined_stats['total/steps'] = t
-
-            print("#############################")
+            log_file.write("epoch %i\n" % epoch)
+            log_file.write("#############################\n")
             for key in sorted(combined_stats.keys()):
-                print(key, '\t', combined_stats[key])
-            print("#############################")
-
+                log_file.write("%s\t%s\n" % (key, str(combined_stats[key])))
+            log_file.write("#############################\n")
+            print("epoch %i finished" % epoch)
+        log_file.close()
