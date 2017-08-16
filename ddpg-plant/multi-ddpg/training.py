@@ -2,7 +2,7 @@ import os
 import time
 from collections import deque
 import pickle
-
+from tqdm import tqdm
 from multi_ddpg import DDPG
 import numpy as np
 import tensorflow as tf
@@ -68,7 +68,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, ac
         log_file = open('log','a')
         for epoch in range(nb_epochs):
             epoch_start_time = time.time()
-            for cycle in range(nb_epoch_cycles): # well, each episode is considered as one rollout
+            for cycle in tqdm(range(nb_epoch_cycles), ncols=50): # well, each episode is considered as one rollout
                 # Perform rollouts.
                 while not done:
                     # Predict next action.
@@ -138,7 +138,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, ac
             if evaluation:
                eval_episode_reward = 0.
                # TODO change the evaluation method.
-               for t_rollout in range(nb_eval_cycles):
+               for t_rollout in tqdm(range(nb_eval_cycles), ncols=50):
                    while not done:
                        eval_action, eval_q = agent.pi(obs, apply_noise=False, compute_Q=True)
                        obs, eval_r, done, eval_info = env.step(
