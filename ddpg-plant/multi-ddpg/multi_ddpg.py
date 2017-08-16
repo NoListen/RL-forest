@@ -71,7 +71,9 @@ class DDPG(object):
 
         # Create networks and core TF parts that are shared across setup parts.
         # When the network is too wide or deep, it tends to be overfitting.
+        print("I am building the actor")
         self.actor_tf = actor(self.obs0, n_hidden)
+        print("actor finished")
         self.critic_tf = critic(self.obs0, self.actions, self.mask0, n_hidden)
         self.critic_with_actor_tf = critic(self.obs0, self.actor_tf, self.mask0, n_hidden, reuse=True)
 
@@ -191,7 +193,7 @@ class DDPG(object):
         else:
             action = self.sess.run(actor_tf, feed_dict=feed_dict)
             q = None
-        action = action.flatten()
+        action = np.squeeze(action, [0])
         # I don't think the noise is adjusting to the action.
         if self.action_noise is not None and apply_noise:
             noise = self.action_noise()

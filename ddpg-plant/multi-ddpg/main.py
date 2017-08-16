@@ -22,20 +22,19 @@ import gym
 import tensorflow as tf
 
 
-def run(env_id, seed, noise_type, layer_norm, logdir, evaluation, nb_unit, ip, port, **kwargs):
+def run(env_id, seed, noise_type, layer_norm, logdir, evaluation, nb_units, ip, port, **kwargs):
     kwargs['logdir'] = logdir
-
+    print("Well I am going to print the ip", ip)
     # remove evaluation environment.
     if env_id == "StarCraft":
         env = sc.MapBattleEnv(ip, port)
     else:
-
-    # Create envs.
-    env = gym.make(env_id)
+        env = gym.make(env_id)
 
     # Parse noise_type
     action_noise = None
-    nb_actions = env.action_space.shape[-1]
+    nb_actions = env.action_space.shape
+    nb_unit_actions = env.nb_unit_actions
     for current_noise_type in noise_type.split(','):
         current_noise_type = current_noise_type.strip()
         if current_noise_type == 'none':
@@ -49,11 +48,11 @@ def run(env_id, seed, noise_type, layer_norm, logdir, evaluation, nb_unit, ip, p
                                                         sigma=float(stddev) * np.ones(nb_actions))
         else:
             raise RuntimeError('unknown noise type "{}"'.format(current_noise_type))
-
+    print(action_noise.mu,"#LARRY#")
     # Configure components.
-    memory = Memory(limit=int(1e6), action_shape=env.action_space.shape, observation_shape=env.observation_space.shape)
-    critic = Critic(layer_norm=layer_norm, time_step=nb_unit)
-    actor = Actor(nb_actions, layer_norm=layer_norm, time_step=nb_unit)
+    memory = Memory(limit=int(1e6), action_shape=env.action_space.shape, observation_shape=env.observation_space.shape, mask_shape=env.mask_shape)
+    critic = Critic(layer_norm=layer_norm, time_step=nb_units)
+    actor = Actor(nb_unit_actions, layer_norm=layer_norm, time_step=nb_units)
 
     # Seed everything to make things reproducible.
 

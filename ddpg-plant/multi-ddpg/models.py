@@ -25,9 +25,9 @@ class Model(object):
 # Initialization can't be determined temporally
 
 class Actor(Model):
-    def __init__(self, nb_actions, name='actor', layer_norm=True, time_step=5):
+    def __init__(self, nb_unit_actions, name='actor', layer_norm=True, time_step=5):
         super(Actor, self).__init__(name=name)
-        self.nb_actions = nb_actions
+        self.nb_unit_actions = nb_unit_actions
         self.layer_norm = layer_norm
         self.time_step = time_step
 
@@ -65,6 +65,7 @@ class Actor(Model):
             x, _ = tf.nn.bidirectional_dynamic_rnn(lstm_fw_cell, lstm_bw_cell, x,
                                                                      dtype=tf.float32)
                                                                      # sequence_length=self.sequence_length)
+            x = tf.concat(x, 2)
             # outputs [batch_size, time_step, mum_output(num_hidden)]
             # TODO v1 split to compute different actions.
             # v2( Or one convolution Network with three channels )
@@ -76,10 +77,9 @@ class Actor(Model):
 
             # number of convolution kernel. --> num_actions. default (-1, 1)
             # convert to [batch_size, time_step*n_hidden], channels_last
-            x = tf.reshape(x, [-1, self.time_step*n_hidden, 1])
-            x = tf.layers.conv1d(x, self.nb_actions, kernel_size = n_hidden, stride = n_hidden,
+            x = tf.reshape(x, [-1, self.time_step*n_hidden*2, 1])
+            x = tf.layers.conv1d(x, self.nb_unit_actions, kernel_size = n_hidden*2, strides = n_hidden*2,
                                  kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
-
             # [ batch_size, time_step, nb_actions]
             x = tf.nn.tanh(x)
         return x
@@ -120,33 +120,33 @@ class Critic(Model):
 
             x, _ = tf.nn.bidirectional_dynamic_rnn(lstm_fw_cell, lstm_bw_cell, x,
                                                    dtype=tf.float32)
-
+            x = tf.concat(x, 2)
             # TODO v2 turn on the batch_norm after lstm
             # if self.layer_norm:
             #     x = tc.layers.layer_norm(x, center=True, scale=True)
             # x = tf.nn.relu(x)
 
-            x = tf.reshape(x, [-1, self.time_step * n_hidden, 1])
+            x = tf.reshape(x, [-1, self.time_step * n_hidden * 2, 1])
             # Q value of each
-            x = tf.layers.conv1d(x, 1, kernel_size=n_hidden, stride=n_hidden,
+            q = tf.layers.conv1d(x, 1, kernel_size=n_hidden*2, strides=n_hidden*2,
                                  kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
-            x = tf.squeeze(x)
+            q = tf.squeeze(q, [-1])
 
-            p = tf.layers.conv1d(x, 1, kernel_size=n_hidden, stride=n_hidden,
+            p = tf.layers.conv1d(x, 1, kernel_size=n_hidden*2, strides=n_hidden*2,
                                  kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
-            p = tf.squeeze(p)
+            p = tf.squeeze(p, [-1])
             if self.layer_norm:
                 p = tc.layers.layer_norm(p, center=True, scale=True)
             p = tf.nn.relu(p)
 
             p = tf.layers.dense(p, self.time_step, kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
-            p = tf.softmax(p)
+            p = tf.nn.softmax(p)
             # TODO add the temperature
             # p = tf.softmax(p/t)
             # TODO  v1 punish those probabilty to be zero
             # TODO v2 punish the Q values to be zero
             """ kill the gradient using the mask """
-            pQ = tf.multiply( tf.multiply(p,x), mask)
+            pQ = tf.multiply( tf.multiply(p,q), mask)
             Q = tf.reduce_sum(pQ, axis=1)
         return Q
 
