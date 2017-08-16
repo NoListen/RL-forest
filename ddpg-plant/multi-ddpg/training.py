@@ -15,7 +15,7 @@ import tensorflow as tf
 
 def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, actor, critic,
           critic_l2_reg, actor_lr, critic_lr, action_noise, logdir,
-          gamma, clip_norm, nb_train_steps, nb_rollout_steps, nb_eval_steps, batch_size, memory, evaluation,
+          gamma, clip_norm, nb_train_steps, nb_eval_cycles, batch_size, memory, evaluation,
           tau=0.01, eval_env=None, save_iter=None):
 
     # indeed [-1. 1]
@@ -130,7 +130,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, ac
                 if evaluation:
                     eval_episode_reward = 0.
                     # TODO change the evaluation method.
-                    for t_rollout in range(nb_eval_circle):
+                    for t_rollout in range(nb_eval_cycles):
                         while not done:
                             eval_action, eval_q = agent.pi(obs, apply_noise=False, compute_Q=True)
                             obs, eval_r, done, eval_info = env.step(

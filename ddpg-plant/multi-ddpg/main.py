@@ -92,8 +92,8 @@ def parse_args():
     parser.add_argument('--nb-epochs', type=int, default=500)  # with default settings, perform 1M steps total
     parser.add_argument('--nb-epoch-cycles', type=int, default=20)
     parser.add_argument('--nb-train-steps', type=int, default=100)  # per epoch cycle and MPI worker
-    parser.add_argument('--nb-eval-steps', type=int, default=1000)  # per epoch cycle and MPI worker
-    parser.add_argument('--nb-rollout-steps', type=int, default=300)  # per epoch cycle and MPI worker
+    parser.add_argument('--nb-eval-cycles', type=int, default=1000)  # per epoch cycle and MPI worker
+    # parser.add_argument('--nb-rollout-steps', type=int, default=300)  # per epoch cycle and MPI worker
     parser.add_argument('--noise-type', type=str,
                         default='ou_0.1')  # choices are adaptive-param_xx, ou_xx, normal_xx, none
     parser.add_argument('--logdir', type=str, default=None)
