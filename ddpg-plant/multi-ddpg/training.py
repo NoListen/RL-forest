@@ -205,5 +205,6 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, ac
             for key in sorted(combined_stats.keys()):
                 log_file.write("%s\t%s\n" % (key, str(combined_stats[key])))
             log_file.write("#############################\n")
+            log_file.flush()
             print("epoch %i finished" % epoch)
         log_file.close()
