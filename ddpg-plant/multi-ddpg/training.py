@@ -156,7 +156,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, ac
                            eval_episode_reward = 0.
                    done = False
             if save_epoch_interval and epoch%save_epoch_interval == 0:
-               saver.save(sess, logdir+'/epoch_%i_winrate_%f' % (epoch, float(eval_wins)/nb_eval_cycles), global_step = t)
+               saver.save(sess, logdir+'/epoch_%i_winrate_%.2f' % (epoch, float(eval_wins)/nb_eval_cycles), global_step = t)
            # Log stats.
             epoch_train_duration = time.time() - epoch_start_time
             duration = time.time() - start_time
