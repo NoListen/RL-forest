@@ -16,7 +16,7 @@ import tensorflow as tf
 def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, actor, critic,
           critic_l2_reg, actor_lr, critic_lr, action_noise, logdir,
           gamma, clip_norm, nb_train_steps, nb_eval_cycles, batch_size, memory, evaluation,
-          tau=0.01, eval_env=None, save_iter=None):
+          tau=0.01, eval_env=None, save_epoch_interval=None):
 
     # indeed [-1. 1]
     assert (np.abs(env.action_space.low) == env.action_space.high).all()  # we assume symmetric actions.
@@ -31,7 +31,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, ac
     print(str(agent.__dict__.items()))
 
     # Set up logging stuff only for a single worker.
-    if save_iter:
+    if save_epoch_interval:
         saver = tf.train.Saver()
     else:
         saver = None
@@ -155,6 +155,8 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, ac
                            eval_episode_rewards_history.append(eval_episode_reward)
                            eval_episode_reward = 0.
                    done = False
+            if save_epoch_interval and epoch%save_epoch_interval == 0:
+               saver.save(sess, logdir+'/epoch_%i_winrate_%f' % (epoch, float(eval_wins)/nb_eval_cycles), global_step = t)
            # Log stats.
             epoch_train_duration = time.time() - epoch_start_time
             duration = time.time() - start_time

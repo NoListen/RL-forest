@@ -20,7 +20,7 @@ from noise import *
 
 import gym
 import tensorflow as tf
-
+import os
 
 def run(env_id, seed, noise_type, layer_norm, logdir, evaluation, nb_units, ip, port, frame_skip, **kwargs):
     kwargs['logdir'] = logdir
@@ -74,6 +74,7 @@ def parse_args():
     parser.add_argument('--env-id', type=str, default='StarCraft')
     parser.add_argument('--ip', help="server ip")
     parser.add_argument('--port', help="server port", type=int, default=11111)
+    parser.add_argument('--save-epoch-interval', type=int, default=5)
 
     parser.add_argument('--nb-units', type=int, default=5)
     boolean_flag(parser, 'render-eval', default=False)
@@ -95,7 +96,7 @@ def parse_args():
     # parser.add_argument('--nb-rollout-steps', type=int, default=300)  # per epoch cycle and MPI worker
     parser.add_argument('--noise-type', type=str,
                         default='ou_0.2')  # choices are adaptive-param_xx, ou_xx, normal_xx, none
-    parser.add_argument('--logdir', type=str, default=None)
+    parser.add_argument('--logdir', type=str, default='checkpoints')
     boolean_flag(parser, 'evaluation', default=True)
 
 
@@ -114,9 +115,11 @@ if __name__ == '__main__':
     for key in sorted(args.keys()):
         print('{}: {}'.format(key, args[key]))
     print('')
+    if not os.path.exists(args['logdir']):
+        os.mkdir(args['logdir'])
+
     if args['logdir']:
         with open(os.path.join(args['logdir'], 'args.json'), 'w') as f:
             json.dump(args, f)
-
     # Run actual script.
     run(**args)
