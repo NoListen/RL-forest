@@ -76,7 +76,7 @@ def parse_args():
     parser.add_argument('--port', help="server port", type=int, default=11111)
     parser.add_argument('--save-epoch-interval', type=int, default=5)
 
-    parser.add_argument('--nb-units', type=int, default=5)
+    parser.add_argument('--nb-units', type=int, default=10)
     boolean_flag(parser, 'render-eval', default=False)
     boolean_flag(parser, 'layer-norm', default=True)
     boolean_flag(parser, 'render', default=False)

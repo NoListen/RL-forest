@@ -40,7 +40,9 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, ac
     eval_episode_rewards_history = deque(maxlen=100)
     episode_rewards_history = deque(maxlen=100)
     # Config proto
-    with tf.Session() as sess:
+    config = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
+    config.gpu_options.allow_growth=True
+    with  tf.Session(config=config) as sess:
         # Prepare everything.
         agent.initialize(sess)
         sess.graph.finalize()
@@ -143,8 +145,8 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, ac
                        eval_action, eval_q = agent.pi(obs, apply_noise=False, compute_Q=True)
                        obs, eval_r, done, eval_info = env.step(
                            max_action * eval_action)  # scale for execution in env (as far as DDPG is concerned, every action is in [-1, 1])
-                       if render_eval:
-                           eval_env.render()
+                       #if render_eval:
+                       #    eval_env.render()
                        eval_episode_reward += eval_r
                        eval_qs.append(eval_q)
                        if done:
