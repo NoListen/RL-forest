@@ -1,7 +1,18 @@
 # https://github.com/openai/baselines/baselines/ddpg/memory.py
+
+# I want to use the memory used in mxdqn.
+
 import numpy as np
 
-# TODO use the same storage space for both the obs0 and obs1
+# TODO use the same storage space for both the obs0 and obs1. USE HALF Memory.
+# TODO use a dict to save all observation. (Key to key storation)
+""" I DON'T NEED TO CHANGE THE API AGAIN
+DICT HAS key:shape --> create the space
+DICT ALSO HAS key:data --> append the data
+
+Engineering Problem
+"""
+
 
 class RingBuffer(object):
     def __init__(self, maxlen, shape, dtype='float32'):
@@ -40,24 +51,25 @@ def array_min2d(x):
         return x
     return x.reshape(-1, 1)
 
+# TODO integrate attacking map into unit_location map
+# TODO reuse the memory.(obs0 obs1 too many redundance)
 
 class Memory(object):
-    def __init__(self, limit, action_shape, observation_shape, mask_shape):
+    def __init__(self, limit, action_shape, observation_shape, unit_location_shape,
+                 mask_shape):
         self.limit = limit
 
-        # image may be necessary.
-        # the img_size should be read from config files.
-        # TODO add enemy_obs
-        # self.enemy_obs = RingBuffer(limit, shape=(MAP_SIZE, MAP_SIZE, 2))
-
-        self.observations0 = RingBuffer(limit, shape=observation_shape)
+        # TODO change unit_location and mask as boolean type
+        self.ul0 = RingBuffer(limit, shape=unit_location_shape, dtype="uint8")
+        self.ul1 = RingBuffer(limit, shape=unit_location_shape, dtype="uint8")
+        self.observations0 = RingBuffer(limit, shape=observation_shape, dtype="uint8")
         # process the observation in different manners.
-        self.mask0 = RingBuffer(limit, shape=mask_shape)
-        self.mask1 = RingBuffer(limit, shape=mask_shape)
+        self.mask0 = RingBuffer(limit, shape=mask_shape, dtype="uint8")
+        self.mask1 = RingBuffer(limit, shape=mask_shape,  dtype="uint8")
         self.actions = RingBuffer(limit, shape=action_shape)
         self.rewards = RingBuffer(limit, shape=(1,))
         self.terminals1 = RingBuffer(limit, shape=(1,))
-        self.observations1 = RingBuffer(limit, shape=observation_shape)
+        self.observations1 = RingBuffer(limit, shape=observation_shape, dtype="uint8")
         self.length = 0
 
 
@@ -72,8 +84,12 @@ class Memory(object):
         action_batch = self.actions.get_batch(batch_idxs)
         reward_batch = self.rewards.get_batch(batch_idxs)
         terminal1_batch = self.terminals1.get_batch(batch_idxs)
+        ul0_batch = self.ul0.get_batch(batch_idxs)
+        ul1_batch = self.ul1.get_batch(batch_idxs)
 
         result = {
+            'ul0': array_min2d(ul0_batch),
+            'ul1': array_min2d(ul1_batch),
             'obs0': array_min2d(obs0_batch),
             'obs1': array_min2d(obs1_batch),
             'mask0': array_min2d(mask0_batch),
@@ -84,7 +100,8 @@ class Memory(object):
         }
         return result
 
-    def append(self, obs0, mask0, action, reward, obs1, mask1, terminal1, training=True):
+    # when it is changed. I think training will be changed.
+    def append(self, obs0, mask0, ul0, action, reward, obs1, mask1, ul1, terminal1, training=True):
         if not training:
             return
         self.length = min(self.limit, self.length+1)
@@ -95,6 +112,8 @@ class Memory(object):
         self.rewards.append(reward)
         self.observations1.append(obs1)
         self.terminals1.append(terminal1)
+        self.ul0.append(ul0)
+        self.ul1.append(ul1)
 
     @property
     def nb_entries(self):

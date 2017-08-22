@@ -25,13 +25,18 @@ def get_target_updates(vars, target_vars, tau):
 
 # PAY ATTENTION to observation_shape
 class DDPG(object):
-    def __init__(self, actor, critic, memory, observation_shape, mask_shape, action_shape, action_noise=None,
+    def __init__(self, actor, critic, memory, observation_shape, unit_location_shape, mask_shape, action_shape, action_noise=None,
                  gamma=0.99, tau=0.001, batch_size=128, action_range=(-1., 1.), critic_l2_reg=0,
                  actor_lr=1e-4, critic_lr=1e-3, clip_norm=None, reward_scale=1., n_hidden=64):
         """n_hidden is for lstm unit"""
         # train input
         self.obs0 = tf.placeholder(tf.float32, shape=(None,) + observation_shape, name='obs0')
         self.obs1 = tf.placeholder(tf.float32, shape=(None,) + observation_shape, name='obs1')
+
+        assert(len(unit_location_shape) > 0)
+        self.ul0 = tf.placeholder(tf.float32, shape=(None,) + unit_location_shape, name='ul0')
+        self.ul1 = tf.placeholder(tf.float32, shape=(None,) + unit_location_shape, name='ul1')
+
         # mask is defined outside the model
         assert(len(mask_shape) > 0)
         self.mask0 = tf.placeholder(tf.float32, shape=(None,) + mask_shape, name='mask0')
@@ -72,13 +77,13 @@ class DDPG(object):
         # Create networks and core TF parts that are shared across setup parts.
         # When the network is too wide or deep, it tends to be overfitting.
         print("I am building the actor")
-        self.actor_tf = actor(self.obs0, n_hidden)
+        self.actor_tf = actor(self.obs0, self.ul0, n_hidden)
         print("actor finished")
-        self.critic_tf = critic(self.obs0, self.actions, self.mask0, n_hidden)
-        self.critic_with_actor_tf = critic(self.obs0, self.actor_tf, self.mask0, n_hidden, reuse=True)
+        self.critic_tf = critic(self.obs0, self.ul0, self.actions, self.mask0, n_hidden)
+        self.critic_with_actor_tf = critic(self.obs0, self.u10, self.actor_tf, self.mask0, n_hidden, reuse=True)
 
         # well, it's combined from several units.
-        Q_obs1 = target_critic(self.obs1, target_actor(self.obs1), self.mask1, n_hidden)
+        Q_obs1 = target_critic(self.obs1, self.ul1, target_actor(self.obs1, self.ul1, n_hidden), self.mask1, n_hidden)
         self.target_Q = self.rewards + (1. - self.terminals1) * gamma * Q_obs1
 
         # Set up parts.
@@ -187,7 +192,7 @@ class DDPG(object):
         # dead one will be ignored by my environment.
         actor_tf = self.actor_tf
         # TODO utilize the map and enenmy's information in theb network computation.
-        feed_dict = {self.obs0: [obs[0][0]], self.mask0: [obs[0][1]]}
+        feed_dict = {self.ul0: [obs[0]],self.obs0: [obs[1]], self.mask0: [obs[2]]}
         if compute_Q:
             action, q = self.sess.run([actor_tf, self.critic_with_actor_tf], feed_dict=feed_dict)
         else:
@@ -208,13 +213,15 @@ class DDPG(object):
     def store_transition(self, obs0, action, reward, obs1, terminal1):
         reward *= self.reward_scale
         # TODO store the enemy's information and the map
-        myself_obs0 = obs0[0][0]
-        mask0 = obs0[0][1]
+        ul0 = obs0[0]
+        map_obs0 = obs0[1]
+        mask0 = obs0[2]
 
-        myself_obs1 = obs1[0][0]
-        mask1 = obs1[0][1]
-        # TODO resue the space of observation and mask. CUT THE SPACE INTO THHE HALF OF THE ORIGIN.
-        self.memory.append(myself_obs0, mask0, action, reward, myself_obs1, mask1, terminal1)
+        ul1 = obs1[0]
+        map_obs1 = obs1[1]
+        mask1 = obs1[2]
+        self.memory.append(map_obs0, mask0, ul0, action, reward,
+                           map_obs1, mask1, ul1, terminal1)
         # moving average.
         # if self.normalize_observations:
         #     self.obs_rms.update(np.array([obs0]))
@@ -223,6 +230,7 @@ class DDPG(object):
         # Get a batch.
         batch = self.memory.sample(batch_size=self.batch_size)
         target_Q = self.sess.run(self.target_Q, feed_dict={
+            self.ul1: batch['ul1'],
             self.obs1: batch['obs1'],
             self.mask1: batch['mask1'],
             self.rewards: batch['rewards'],
@@ -232,6 +240,7 @@ class DDPG(object):
         ops = [self.actor_train_op, self.actor_loss, self.critic_train_op, self.critic_loss]
         _, actor_loss, _, critic_loss = self.sess.run(ops, feed_dict={
             self.obs0: batch['obs0'],
+            self.ul0: batch['ul0'],
             self.mask0: batch['mask0'],
             self.actions: batch['actions'],
             self.critic_target: target_Q,
@@ -256,6 +265,7 @@ class DDPG(object):
             self.stats_sample = self.memory.sample(batch_size=self.batch_size)
         values = self.sess.run(self.stats_ops, feed_dict={
             self.obs0: self.stats_sample['obs0'],
+            self.ul0: self.stats_sample['ul0'],
             self.mask0: self.stats_sample['mask0'],
             self.actions: self.stats_sample['actions'],
         })

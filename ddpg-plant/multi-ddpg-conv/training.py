@@ -23,9 +23,9 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, ac
     max_action = env.action_space.high
     print('scaling actions by {} before executing in env'.format(max_action))
     # the observation shape doesn't means the shape of obs returned by the environment.
-    agent = DDPG(actor, critic, memory, env.observation_space.shape, env.mask_shape, env.action_space.shape,
-                 gamma=gamma, tau=tau, batch_size=batch_size, action_noise=action_noise, critic_l2_reg=critic_l2_reg,
-                 actor_lr=actor_lr, critic_lr=critic_lr, clip_norm=clip_norm,
+    agent = DDPG(actor, critic, memory, env.observation_space.shape, env.unit_location_shape, env.mask_shape,
+                 env.action_space.shape, gamma=gamma, tau=tau, batch_size=batch_size, action_noise=action_noise,
+                 critic_l2_reg=critic_l2_reg, actor_lr=actor_lr, critic_lr=critic_lr, clip_norm=clip_norm,
                  reward_scale=reward_scale)
     print('Using agent with the following configuration:')
     print(str(agent.__dict__.items()))

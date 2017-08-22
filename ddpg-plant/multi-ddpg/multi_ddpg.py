@@ -78,7 +78,7 @@ class DDPG(object):
         self.critic_with_actor_tf = critic(self.obs0, self.actor_tf, self.mask0, n_hidden, reuse=True)
 
         # well, it's combined from several units.
-        Q_obs1 = target_critic(self.obs1, target_actor(self.obs1), self.mask1, n_hidden)
+        Q_obs1 = target_critic(self.obs1, target_actor(self.obs1, n_hidden), self.mask1, n_hidden)
         self.target_Q = self.rewards + (1. - self.terminals1) * gamma * Q_obs1
 
         # Set up parts.

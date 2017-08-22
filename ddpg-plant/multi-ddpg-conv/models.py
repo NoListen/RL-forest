@@ -3,6 +3,41 @@
 import tensorflow as tf
 import tensorflow.contrib as tc
 from tensorflow.contrib import rnn
+import numpy as np
+
+
+# cover 2d and 3d
+def get_w_bound(filter_shape):
+    return np.sqrt(6./(np.prod(filter_shape[:-2]))*np.sum(filter_shape[-2:]))
+
+
+# modified from https://github.com/openai/universe-starter-agent/model.py
+def conv2d(x, num_filters, name, filter_size=(3, 3), stride=(1, 1),
+           pad="SAME", dtype=tf.float32, collections=None):
+    with tf.variable_scope(name):
+        stride_shape = [1, stride[0], stride[1], 1]
+        filter_shape = [filter_size[0], filter_size[1], int(x.get_shape()[3]), num_filters]
+        w_bound = get_w_bound(filter_shape)
+        w = tf.get_variable("W", filter_shape, dtype, tf.random_uniform_initializer(-w_bound, w_bound),
+                            collections=collections)
+        b = tf.get_variable("b", [1, 1, 1, num_filters], initializer=tf.constant_initializer(0.0),
+                            collections=collections)
+        return tf.nn.conv2d(x, w, stride_shape, pad) + b
+
+
+# modified from https://github.com/openai/universe-starter-agent/model.py
+def conv3d(x, num_filters, name, filter_size=(1, 3, 3), stride=(1, 1, 1),
+           pad="SAME", dtype=tf.float32, collections=None):
+    with tf.variable_scope( name):
+        stride_shape = [1, stride[0], stride[1], stride[2], 1]
+        filter_shape = [filter_size[0], filter_size[1], filter_size[2], int(x.get_shape()[4]), num_filters]
+        w_bound = get_w_bound(filter_shape)
+        w = tf.get_variable("W", filter_shape, dtype, tf.random_uniform_initializer(-w_bound, w_bound),
+                            collections=collections)
+        b = tf.get_variable("b", [1, 1, 1, 1, num_filters], initializer=tf.constant_initializer(0.0),
+                            collections=collections)
+        return tf.nn.conv3d(x, w, stride_shape, pad) + b
+
 
 class Model(object):
     def __init__(self, name):
@@ -24,20 +59,22 @@ class Model(object):
 
 # Initialization can't be determined temporally
 
-class Actor(Model):
+class Conv_Actor(Model):
     def __init__(self, nb_unit_actions, name='actor', layer_norm=True, time_step=5):
-        super(Actor, self).__init__(name=name)
+        super(Conv_Actor, self).__init__(name=name)
         self.nb_unit_actions = nb_unit_actions
         self.layer_norm = layer_norm
         self.time_step = time_step
 
-    def __call__(self, obs, n_hidden=64, reuse=False):
+    # obs is a set of vector.
+    # Concatenate the unit location and the feature map after the first convolutional layer.
+    #TODO no graident from the critic would result in no gradient in the actor too ???
+    # Are there something correlated.
+
+    def __call__(self, obs, unit_locations, n_hidden=256, reuse=False):
         with tf.variable_scope(self.name) as scope:
             if reuse:
                 scope.reuse_variables()
-
-            # tensorflow should treat palceholder like a scalar.
-            # if set batch_size to one, compute the Pi or Q values.
 
             # TODO USE dynamic data of different lengths ( but need to change the experience replay )
             # self.sequence_length = tf.placeholder(tf.int32, [None])
@@ -48,91 +85,150 @@ class Actor(Model):
 
             # embedding
             x = obs
-            x = tf.layers.dense(x, 64)
-            if self.layer_norm:
-                x = tc.layers.layer_norm(x, center=True, scale=True)
-            # original (batch_size*time_step, hidden) -> (batch_size, time_step, hidden)
-            x = tf.nn.relu(x) # no need to extend one dimension
+            # [batch_size, myself_num, ms, ms, 1]
+            u = unit_locations
+            u_shape = u.get_shape().as_list()
+            # tf.shape maybe also ok
+            assert (u_shape[1] == self.time_step)
+            # TODO try different initializer.
+            # the hyper-parameters need to be adjusted
 
-            shape = x.get_shape().as_list()
-            x = tf.reshape(x, [-1, self.time_step, shape[-1]])
+            # 40 -> 20
+            x = conv2d(x, 24, "conv1", (3, 3), (2, 2)) # 4 map
+            u = conv3d(u, 8, "u_conv1", (1, 3, 3), (1, 2, 2)) # 1 map
+
+            # u [batch_size*myself_num, ms/2, ms/2, 1] -> [batch_size, myself, ms/2, ms/2, 1]
+            # x [batch_size, ms/2, ms/2, c]
+            u_list = tf.split(u, self.time_step, axis=1)
+            u_list = [tf.squeeze(unit, [1]) for unit in u_list]
+            ux = tf.stack([tf.concat([x, unit], -1) for unit in u_list], axis=1)
+
+            if self.layer_norm:
+                ux = tc.layers.layer_norm(ux, center=True, scale=True)
+            ux = tf.relu(ux)
+            # 20 -> 10
+            ux = conv3d(ux, 32, "conv2", (1, 3, 3), (1, 2, 2))
+
+            if self.layer_norm:
+                ux = tc.layers.layer_norm(ux, center=True, scale=True)
+            ux = tf.relu(ux)
+
+            # 10 -> 5.
+            ux = conv3d(ux, 32, "conv3", (1, 3, 3), (1, 2, 2))
+
+            if self.layer_norm:
+                ux = tc.layers.layer_norm(ux, center=True, scale=True)
+            ux = tf.relu(ux)
+
+            #TODO add one (1,1,1) layer to reorganize the features.
+            ux_shape = ux.get_shape().as_list()
+            ux = tf.reshape(ux, (-1, self.time_step, int(np.prod(ux_shape[2:]))))
+
+            # TODO is it necessary to add one layer here???
+            # ux = tf.layers.dense(ux, n_hidden)
+            #
+            # if self.layer_norm:
+            #     ux = tc.layers.layer_norm(ux, center=True, scale=True)
+            # ux = tf.nn.relu(ux) # no need to extend one dimension
 
             # build bidirection lstm
             lstm_fw_cell = rnn.BasicLSTMCell(n_hidden, forget_bias=1.0)
             lstm_bw_cell = rnn.BasicLSTMCell(n_hidden, forget_bias=1.0)
 
-            # TODO use output_states for process like policy iteration ---- WOW excite ideas.
-            x, _ = tf.nn.bidirectional_dynamic_rnn(lstm_fw_cell, lstm_bw_cell, x,
+            # TODO use output_states for process like policy iteration ---- WOW exciting ideas.
+            ux, _ = tf.nn.bidirectional_dynamic_rnn(lstm_fw_cell, lstm_bw_cell, ux,
                                                                      dtype=tf.float32)
                                                                      # sequence_length=self.sequence_length)
-            x = tf.concat(x, 2)
-            # outputs [batch_size, time_step, mum_output(num_hidden)]
-            # TODO v1 split to compute different actions.
-            # v2( Or one convolution Network with three channels )
+            ux = tf.concat(ux, 2)
 
             # TODO v2 turn on the batch_norm after lstm
             # if self.layer_norm:
-            #     x = tc.layers.layer_norm(x, center=True, scale=True)
-            # x = tf.nn.relu(x)
+            #     ux = tc.layers.layer_norm(ux, center=True, scale=True)
+            # ux = tf.nn.relu(ux)
 
             # number of convolution kernel. --> num_actions. default (-1, 1)
             # convert to [batch_size, time_step*n_hidden], channels_last
-            x = tf.reshape(x, [-1, self.time_step*n_hidden*2, 1])
-            x = tf.layers.conv1d(x, self.nb_unit_actions, kernel_size = n_hidden*2, strides = n_hidden*2,
+            ux = tf.reshape(ux, [-1, self.time_step*n_hidden*2, 1])
+            ux = tf.layers.conv1d(ux, self.nb_unit_actions, kernel_size = n_hidden*2, strides = n_hidden*2,
                                  kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
             # [ batch_size, time_step, nb_actions]
-            x = tf.nn.tanh(x)
-        return x
+            ux = tf.nn.tanh(ux)
+        return ux
 
 
-class Critic(Model):
+class Conv_Critic(Model):
     def __init__(self, name='critic', layer_norm=True, time_step=5):
-        super(Critic, self).__init__(name=name)
+        super(Conv_Critic, self).__init__(name=name)
         self.layer_norm = layer_norm
         self.time_step = time_step
 
-    def __call__(self, obs, action, mask, n_hidden=64, reuse=False):
+    def __call__(self, obs, unit_locations, action, mask, n_hidden=64, reuse=False):
         with tf.variable_scope(self.name) as scope:
             if reuse:
                 scope.reuse_variables()
 
             # x [ batch_size*time_step, DATA_NUM]
             x = obs
-            x = tf.layers.dense(x, 64)
+            u = unit_locations
+
+            u_shape = u.get_shape().as_list()
+            assert (u_shape[1] == self.time_step)
+
+            x = conv2d(x, 24, "conv1", (3, 3), (2, 2))  # 4 map
+            u = conv3d(u, 8, "u_conv1", (1, 3, 3), (1, 2, 2))  # 1 map
+
+            u_list = tf.split(u, self.time_step, axis=1)
+            u_list = [tf.squeeze(unit, [1]) for unit in u_list]
+            # stack in the time_step axis
+            # TODO extract the weight for unit location
+            ux = tf.stack([tf.concat([x, unit], -1) for unit in u_list], axis=1)
+
             if self.layer_norm:
-                x = tc.layers.layer_norm(x, center=True, scale=True)
-            x = tf.nn.relu(x)
+                ux = tc.layers.layer_norm(ux, center=True, scale=True)
+            ux = tf.relu(ux)
 
-            # format action to be [ batch_size*time_step, nb_actions]
-            x = tf.concat([x, action], axis=-1)
+            # [batch_size, myself_num, ms/2, ms/2, ???]
+            ux = conv3d(ux, 32, "conv2", (1, 3, 3), (1, 2, 2))
 
-            # another dense layer
-            x = tf.layers.dense(x, 64)
             if self.layer_norm:
-                x = tc.layers.layer_norm(x, center=True, scale=True)
-            x = tf.nn.relu(x)
+                ux = tc.layers.layer_norm(ux, center=True, scale=True)
+            ux = tf.relu(ux)
 
-            shape = x.get_shape().as_list()
-            x = tf.reshape(x, [-1, self.time_step, shape[-1]])
+            # 10 -> 5.
+            ux = conv3d(ux, 32, "conv3", (1, 3, 3), (1, 2, 2))
+
+            if self.layer_norm:
+                ux = tc.layers.layer_norm(ux, center=True, scale=True)
+            ux = tf.relu(ux)
+
+            #TODO add one (1,1,1) layer to reorganize the features.
+            ux_shape = ux.get_shape().as_list()
+            ux = tf.reshape(ux, (-1, self.time_step, int(np.prod(ux_shape[2:]))))
+
+            ux = tf.layers.dense(ux, n_hidden)
+            if self.layer_norm:
+                ux = tc.layers.layer_norm(ux, center=True, scale=True)
+            ux = tf.nn.relu(ux) # no need to extend one dimension
+            ux = tf.concat([ux, action], axis=-1)
 
             lstm_fw_cell = rnn.BasicLSTMCell(n_hidden, forget_bias=1.0)
             lstm_bw_cell = rnn.BasicLSTMCell(n_hidden, forget_bias=1.0)
 
-            x, _ = tf.nn.bidirectional_dynamic_rnn(lstm_fw_cell, lstm_bw_cell, x,
+            ux, _ = tf.nn.bidirectional_dynamic_rnn(lstm_fw_cell, lstm_bw_cell, ux,
                                                    dtype=tf.float32)
-            x = tf.concat(x, 2)
+            ux = tf.concat(ux, 2)
             # TODO v2 turn on the batch_norm after lstm
             # if self.layer_norm:
-            #     x = tc.layers.layer_norm(x, center=True, scale=True)
-            # x = tf.nn.relu(x)
+            #     ux = tc.layers.layer_norm(ux, center=True, scale=True)
+            # ux = tf.nn.relu(ux)
 
-            x = tf.reshape(x, [-1, self.time_step * n_hidden * 2, 1])
+            ux = tf.reshape(ux, [-1, self.time_step * n_hidden * 2, 1])
             # Q value of each
-            q = tf.layers.conv1d(x, 1, kernel_size=n_hidden*2, strides=n_hidden*2,
+            q = tf.layers.conv1d(ux, 1, kernel_size=n_hidden*2, strides=n_hidden*2,
                                  kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
             q = tf.squeeze(q, [-1])
 
-            p = tf.layers.conv1d(x, 1, kernel_size=n_hidden*2, strides=n_hidden*2,
+            p = tf.layers.conv1d(ux, 1, kernel_size=n_hidden*2, strides=n_hidden*2,
                                  kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
             p = tf.squeeze(p, [-1])
             if self.layer_norm:

@@ -42,7 +42,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, ac
     # Config proto
     config = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
     config.gpu_options.allow_growth=True
-    with  tf.Session(config=config) as sess:
+    with tf.Session(config=config) as sess:
         # Prepare everything.
         agent.initialize(sess)
         sess.graph.finalize()
