@@ -7,14 +7,14 @@ import os
 from tempfile import mkdtemp
 import sys
 import json
-import gym_starcraft.envs.map_battle_env as sc
+import gym_starcraft.envs.war_map_battle_env as sc
 
 from misc_util import (
     set_global_seeds,
     boolean_flag )
 
 import training
-from models import Actor, Critic
+from models import Conv_Actor, Conv_Critic
 from memory import Memory
 from noise import *
 
@@ -27,7 +27,7 @@ def run(env_id, seed, noise_type, layer_norm, logdir, evaluation, nb_units, ip, 
     print("Well I am going to print the ip", ip)
     # remove evaluation environment.
     if env_id == "StarCraft":
-        env = sc.MapBattleEnv(ip, port, frame_skip = frame_skip)
+        env = sc.WarMapBattleEnv(ip, port, frame_skip = frame_skip)
     else:
         env = gym.make(env_id)
 
@@ -49,9 +49,10 @@ def run(env_id, seed, noise_type, layer_norm, logdir, evaluation, nb_units, ip, 
         else:
             raise RuntimeError('unknown noise type "{}"'.format(current_noise_type))
     # Configure components.
-    memory = Memory(limit=int(1e6), action_shape=env.action_space.shape, observation_shape=env.observation_space.shape, mask_shape=env.mask_shape)
-    critic = Critic(layer_norm=layer_norm, time_step=nb_units)
-    actor = Actor(nb_unit_actions, layer_norm=layer_norm, time_step=nb_units)
+    memory = Memory(limit=int(1e6), action_shape=env.action_space.shape, observation_shape=env.observation_space.shape, 
+        unit_location_shape=env.unit_location_shape, mask_shape=env.mask_shape)
+    critic = Conv_Critic(layer_norm=layer_norm, time_step=nb_units)
+    actor = Conv_Actor(nb_unit_actions, layer_norm=layer_norm, time_step=nb_units)
 
     # Seed everything to make things reproducible.
 
@@ -76,12 +77,12 @@ def parse_args():
     parser.add_argument('--port', help="server port", type=int, default=11111)
     parser.add_argument('--save-epoch-interval', type=int, default=5)
 
-    parser.add_argument('--nb-units', type=int, default=10)
+    parser.add_argument('--nb-units', type=int, default=5)
     boolean_flag(parser, 'render-eval', default=False)
     boolean_flag(parser, 'layer-norm', default=True)
     boolean_flag(parser, 'render', default=False)
     parser.add_argument('--seed', type=int, default=123457)
-    parser.add_argument('--critic-l2-reg', type=float, default=1e-2)
+    parser.add_argument('--critic-l2-reg', type=float, default=0)
     parser.add_argument('--batch-size', type=int, default=32)  # per MPI worker
     parser.add_argument('--actor-lr', type=float, default=2e-5)
     parser.add_argument('--critic-lr', type=float, default=1e-3)
@@ -95,7 +96,7 @@ def parse_args():
     parser.add_argument('--frame-skip', type=int, default=2)
     # parser.add_argument('--nb-rollout-steps', type=int, default=300)  # per epoch cycle and MPI worker
     parser.add_argument('--noise-type', type=str,
-                        default='ou_0.2')  # choices are adaptive-param_xx, ou_xx, normal_xx, none
+                        default='ou_0.1')  # choices are adaptive-param_xx, ou_xx, normal_xx, none
     parser.add_argument('--logdir', type=str, default='checkpoints')
     boolean_flag(parser, 'evaluation', default=True)
 

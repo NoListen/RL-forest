@@ -105,20 +105,20 @@ class Conv_Actor(Model):
 
             if self.layer_norm:
                 ux = tc.layers.layer_norm(ux, center=True, scale=True)
-            ux = tf.relu(ux)
+            ux = tf.nn.relu(ux)
             # 20 -> 10
             ux = conv3d(ux, 32, "conv2", (1, 3, 3), (1, 2, 2))
 
             if self.layer_norm:
                 ux = tc.layers.layer_norm(ux, center=True, scale=True)
-            ux = tf.relu(ux)
+            ux = tf.nn.relu(ux)
 
             # 10 -> 5.
             ux = conv3d(ux, 32, "conv3", (1, 3, 3), (1, 2, 2))
 
             if self.layer_norm:
                 ux = tc.layers.layer_norm(ux, center=True, scale=True)
-            ux = tf.relu(ux)
+            ux = tf.nn.relu(ux)
 
             #TODO add one (1,1,1) layer to reorganize the features.
             ux_shape = ux.get_shape().as_list()
@@ -142,9 +142,9 @@ class Conv_Actor(Model):
             ux = tf.concat(ux, 2)
 
             # TODO v2 turn on the batch_norm after lstm
-            # if self.layer_norm:
-            #     ux = tc.layers.layer_norm(ux, center=True, scale=True)
-            # ux = tf.nn.relu(ux)
+            if self.layer_norm:
+                 ux = tc.layers.layer_norm(ux, center=True, scale=True)
+            ux = tf.nn.relu(ux)
 
             # number of convolution kernel. --> num_actions. default (-1, 1)
             # convert to [batch_size, time_step*n_hidden], channels_last
@@ -162,7 +162,7 @@ class Conv_Critic(Model):
         self.layer_norm = layer_norm
         self.time_step = time_step
 
-    def __call__(self, obs, unit_locations, action, mask, n_hidden=64, reuse=False):
+    def __call__(self, obs, unit_locations, action, mask, t, n_hidden=64, reuse=False, unit_data=False, mask_loss=False):
         with tf.variable_scope(self.name) as scope:
             if reuse:
                 scope.reuse_variables()
@@ -185,21 +185,21 @@ class Conv_Critic(Model):
 
             if self.layer_norm:
                 ux = tc.layers.layer_norm(ux, center=True, scale=True)
-            ux = tf.relu(ux)
+            ux = tf.nn.relu(ux)
 
             # [batch_size, myself_num, ms/2, ms/2, ???]
             ux = conv3d(ux, 32, "conv2", (1, 3, 3), (1, 2, 2))
 
             if self.layer_norm:
                 ux = tc.layers.layer_norm(ux, center=True, scale=True)
-            ux = tf.relu(ux)
+            ux = tf.nn.relu(ux)
 
             # 10 -> 5.
             ux = conv3d(ux, 32, "conv3", (1, 3, 3), (1, 2, 2))
 
             if self.layer_norm:
                 ux = tc.layers.layer_norm(ux, center=True, scale=True)
-            ux = tf.relu(ux)
+            ux = tf.nn.relu(ux)
 
             #TODO add one (1,1,1) layer to reorganize the features.
             ux_shape = ux.get_shape().as_list()
@@ -218,9 +218,9 @@ class Conv_Critic(Model):
                                                    dtype=tf.float32)
             ux = tf.concat(ux, 2)
             # TODO v2 turn on the batch_norm after lstm
-            # if self.layer_norm:
-            #     ux = tc.layers.layer_norm(ux, center=True, scale=True)
-            # ux = tf.nn.relu(ux)
+            if self.layer_norm:
+                 ux = tc.layers.layer_norm(ux, center=True, scale=True)
+            ux = tf.nn.relu(ux)
 
             ux = tf.reshape(ux, [-1, self.time_step * n_hidden * 2, 1])
             # Q value of each
@@ -236,7 +236,7 @@ class Conv_Critic(Model):
             p = tf.nn.relu(p)
 
             p = tf.layers.dense(p, self.time_step, kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
-            p = tf.nn.softmax(p)
+            p = tf.nn.softmax(tf.divide(p/t))
             # TODO add the temperature
             # p = tf.softmax(p/t)
             # TODO  v1 punish those probabilty to be zero
@@ -247,6 +247,12 @@ class Conv_Critic(Model):
             pQ_mask = tf.multiply(pQ, mask)
             #print(mask.get_shape().as_list(), pQ_mask.get_shape().as_list(), "mask")
             Q = tf.reduce_sum(pQ_mask, axis=1, keep_dims=True)
+        if unit_data:
+            return Q,p,q
+        if mask_loss:
+            #TODO check this putput
+            qm = tf.multiply(1-mask, q)
+            return Q,qm
             #print(Q.get_shape().as_list, "Q")
         return Q
 

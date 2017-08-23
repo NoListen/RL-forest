@@ -76,7 +76,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, ac
                     # Predict next action.
                     # TODO the call function has been changed in the model file, so we need to change the ddpg file.
 
-                    action, q = agent.pi(obs, apply_noise=True, compute_Q=True)
+                    action, q, prob, uq = agent.pi(obs, apply_noise=True, compute_Q=True)
                     assert action.shape == env.action_space.shape
 
                     if render:
@@ -142,13 +142,14 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, ac
                # TODO change the evaluation method.
                for t_rollout in tqdm(range(nb_eval_cycles), ncols=50):
                    while not done:
-                       eval_action, eval_q = agent.pi(obs, apply_noise=False, compute_Q=True)
+                       eval_action, eval_q, eval_prob, eval_uq = agent.pi(obs, apply_noise=False, compute_Q=True)
                        obs, eval_r, done, eval_info = env.step(
                            max_action * eval_action)  # scale for execution in env (as far as DDPG is concerned, every action is in [-1, 1])
                        #if render_eval:
                        #    eval_env.render()
                        eval_episode_reward += eval_r
                        eval_qs.append(eval_q)
+                       print(eval_prob, eval_uq)
                        if done:
                            if eval_episode_reward > 0:
                                eval_wins += 1
@@ -164,6 +165,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, ac
             duration = time.time() - start_time
             stats = agent.get_stats()
             combined_stats = {}
+            agent.anneal_t()
             for key in sorted(stats.keys()):
                 combined_stats[key] = np.mean(stats[key])
 

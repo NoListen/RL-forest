@@ -29,10 +29,12 @@ class DDPG(object):
                  gamma=0.99, tau=0.001, batch_size=128, action_range=(-1., 1.), critic_l2_reg=0,
                  actor_lr=1e-4, critic_lr=1e-3, clip_norm=None, reward_scale=1., n_hidden=64):
         """n_hidden is for lstm unit"""
+        self.t_value = 100
+        self.anneal_delta = 5
         # train input
         self.obs0 = tf.placeholder(tf.float32, shape=(None,) + observation_shape, name='obs0')
         self.obs1 = tf.placeholder(tf.float32, shape=(None,) + observation_shape, name='obs1')
-
+        self.t = tf.placeholder(tf.float32, None, name="temperature")
         assert(len(unit_location_shape) > 0)
         self.ul0 = tf.placeholder(tf.float32, shape=(None,) + unit_location_shape, name='ul0')
         self.ul1 = tf.placeholder(tf.float32, shape=(None,) + unit_location_shape, name='ul1')
@@ -79,11 +81,11 @@ class DDPG(object):
         print("I am building the actor")
         self.actor_tf = actor(self.obs0, self.ul0, n_hidden)
         print("actor finished")
-        self.critic_tf = critic(self.obs0, self.ul0, self.actions, self.mask0, n_hidden)
-        self.critic_with_actor_tf = critic(self.obs0, self.u10, self.actor_tf, self.mask0, n_hidden, reuse=True)
+        self.critic_tf, self.critic_qm = critic(self.obs0, self.ul0, self.actions, self.mask0, self.t, n_hidden, mask_loss=True)
+        self.critic_with_actor_tf, self.prob, self.uq = critic(self.obs0, self.ul0, self.actor_tf, self.mask0, self.t, n_hidden, reuse=True, unit_data=True)
 
         # well, it's combined from several units.
-        Q_obs1 = target_critic(self.obs1, self.ul1, target_actor(self.obs1, self.ul1, n_hidden), self.mask1, n_hidden)
+        Q_obs1 = target_critic(self.obs1, self.ul1, target_actor(self.obs1, self.ul1, n_hidden), self.mask1, self.t, n_hidden)
         self.target_Q = self.rewards + (1. - self.terminals1) * gamma * Q_obs1
 
         # Set up parts.
@@ -93,6 +95,9 @@ class DDPG(object):
         #  used to debug and follow the process.
         self.setup_stats()
         self.setup_target_network_updates()
+
+    def anneal_t(self):
+        self.t_value = max(1, self.t_value - self.anneal_delta)
 
     def setup_target_network_updates(self):
         # init & soft
@@ -130,10 +135,10 @@ class DDPG(object):
     def setup_critic_optimizer(self):
         print('setting up critic optimizer')
         # Most cases ( train ), off policy
-        self.critic_loss = tf.reduce_mean(tf.square(self.critic_tf - self.critic_target))
+        self.critic_loss = tf.reduce_mean(tf.square(self.critic_tf - self.critic_target)+tf.square(self.critic_qm))
         if self.critic_l2_reg > 0.:
             critic_reg_vars = [var for var in self.critic.trainable_vars if
-                               'kernel' in var.name and 'output' not in var.name]
+                               ('kernel' in var.name or 'W' in var.name) and 'output' not in var.name]
             for var in critic_reg_vars:
                 print('  regularizing: {}'.format(var.name))
             print('  applying l2 regularization with {}'.format(self.critic_l2_reg))
@@ -192,12 +197,14 @@ class DDPG(object):
         # dead one will be ignored by my environment.
         actor_tf = self.actor_tf
         # TODO utilize the map and enenmy's information in theb network computation.
-        feed_dict = {self.ul0: [obs[0]],self.obs0: [obs[1]], self.mask0: [obs[2]]}
+        feed_dict = {self.ul0: [obs[0]],self.obs0: [obs[1]], self.mask0: [obs[2]], self.t: self.t_value}
         if compute_Q:
-            action, q = self.sess.run([actor_tf, self.critic_with_actor_tf], feed_dict=feed_dict)
+            action, q, prob, uq = self.sess.run([actor_tf, self.critic_with_actor_tf, self.prob, self.uq], feed_dict=feed_dict)
         else:
             action = self.sess.run(actor_tf, feed_dict=feed_dict)
             q = None
+            uq = None
+            prob = None
         action = np.squeeze(action, [0])
         # I don't think the noise is adjusting to the action.
         if self.action_noise is not None and apply_noise:
@@ -208,7 +215,7 @@ class DDPG(object):
         #  Maybe I need a additional specification in this situation.
         # Continuous Space
         action = np.clip(action, self.action_range[0], self.action_range[1])
-        return action, q
+        return action, q, prob, uq
 
     def store_transition(self, obs0, action, reward, obs1, terminal1):
         reward *= self.reward_scale
@@ -235,6 +242,7 @@ class DDPG(object):
             self.mask1: batch['mask1'],
             self.rewards: batch['rewards'],
             self.terminals1: batch['terminals1'].astype('float32'),
+            self.t: self.t_value
         })
         # Get all gradients and perform a synced update.
         ops = [self.actor_train_op, self.actor_loss, self.critic_train_op, self.critic_loss]
@@ -244,6 +252,7 @@ class DDPG(object):
             self.mask0: batch['mask0'],
             self.actions: batch['actions'],
             self.critic_target: target_Q,
+            self.t: self.t_value
         })
         # self.actor_optimizer.update(actor_grads, stepsize=self.actor_lr)
         # self.critic_optimizer.update(critic_grads, stepsize=self.critic_lr)
@@ -268,6 +277,7 @@ class DDPG(object):
             self.ul0: self.stats_sample['ul0'],
             self.mask0: self.stats_sample['mask0'],
             self.actions: self.stats_sample['actions'],
+            self.t: self.t_value
         })
 
         names = self.stats_names[:]

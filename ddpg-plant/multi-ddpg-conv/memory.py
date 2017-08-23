@@ -15,11 +15,11 @@ Engineering Problem
 
 
 class RingBuffer(object):
-    def __init__(self, maxlen, shape, dtype='float32'):
+    def __init__(self, maxlen, shape, dtype=np.float32):
         self.maxlen = maxlen
         self.start = 0
         self.length = 0
-        self.data = np.zeros((maxlen,) + shape).astype(dtype)
+        self.data = np.zeros((maxlen,) + shape, dtype=dtype)
 
     def __len__(self):
         return self.length
@@ -60,16 +60,16 @@ class Memory(object):
         self.limit = limit
 
         # TODO change unit_location and mask as boolean type
-        self.ul0 = RingBuffer(limit, shape=unit_location_shape, dtype="uint8")
-        self.ul1 = RingBuffer(limit, shape=unit_location_shape, dtype="uint8")
-        self.observations0 = RingBuffer(limit, shape=observation_shape, dtype="uint8")
+        self.ul0 = RingBuffer(limit, shape=unit_location_shape, dtype=np.uint8)
+        self.ul1 = RingBuffer(limit, shape=unit_location_shape, dtype=np.uint8)
+        self.observations0 = RingBuffer(limit, shape=observation_shape, dtype=np.uint8)
         # process the observation in different manners.
-        self.mask0 = RingBuffer(limit, shape=mask_shape, dtype="uint8")
-        self.mask1 = RingBuffer(limit, shape=mask_shape,  dtype="uint8")
+        self.mask0 = RingBuffer(limit, shape=mask_shape, dtype=np.uint8)
+        self.mask1 = RingBuffer(limit, shape=mask_shape,  dtype=np.uint8)
         self.actions = RingBuffer(limit, shape=action_shape)
         self.rewards = RingBuffer(limit, shape=(1,))
         self.terminals1 = RingBuffer(limit, shape=(1,))
-        self.observations1 = RingBuffer(limit, shape=observation_shape, dtype="uint8")
+        self.observations1 = RingBuffer(limit, shape=observation_shape, dtype=np.uint8)
         self.length = 0
 
 
