@@ -1,0 +1,87 @@
+epoch 0
+#############################
+eval/Q	0.00994353
+eval/episodes	20
+eval/return	0.794
+eval/return_history	0.794
+eval/win_rate	0.9
+reference_Q_mean	0.0125588
+reference_Q_std	0.0206241
+reference_action_mean	-0.314888
+reference_action_std	0.914211
+reference_actor_Q_mean	0.013744
+reference_actor_Q_std	0.0206281
+rollout/Q_mean	0.00156041
+rollout/actions_mean	-0.136205
+rollout/actions_std	0.628412
+rollout/average_return over 100 episodes	-1.234
+rollout/avergae_return	-1.234
+rollout/duration	223.77352929115295
+rollout/episode_steps	211.75
+rollout/episodes	20
+total/duration	223.77359628677368
+total/episodes	20.0
+total/epochs	1
+total/steps	4235
+total/steps_per_second	18.925378464100383
+train/loss_actor	-0.00294623
+train/loss_critic	7.93073
+#############################
+epoch 1
+#############################
+eval/Q	0.031711
+eval/episodes	20
+eval/return	0.234
+eval/return_history	0.514
+eval/win_rate	0.8
+reference_Q_mean	0.0318387
+reference_Q_std	0.0461732
+reference_action_mean	0.231861
+reference_action_std	0.868992
+reference_actor_Q_mean	0.0326423
+reference_actor_Q_std	0.0467046
+rollout/Q_mean	0.0183179
+rollout/actions_mean	-0.255344
+rollout/actions_std	0.905602
+rollout/average_return over 100 episodes	-0.579
+rollout/avergae_return	0.076
+rollout/duration	284.64323806762695
+rollout/episode_steps	213.9
+rollout/episodes	40
+total/duration	508.4722807407379
+total/episodes	40.0
+total/epochs	2
+total/steps	8513
+total/steps_per_second	16.742308917210465
+train/loss_actor	-0.0129603
+train/loss_critic	1.17952
+#############################
+epoch 0
+#############################
+eval/Q	0.00806673
+eval/episodes	20
+eval/return	0.115
+eval/return_history	0.115
+eval/win_rate	0.65
+reference_Q_mean	0.00663142
+reference_Q_std	0.0129189
+reference_action_mean	0.283204
+reference_action_std	0.8804
+reference_actor_Q_mean	0.00826594
+reference_actor_Q_std	0.0129945
+rollout/Q_mean	0.00183764
+rollout/actions_mean	0.0624501
+rollout/actions_std	0.55871
+rollout/average_return over 100 episodes	-1.769
+rollout/avergae_return	-1.769
+rollout/duration	308.0792324542999
+rollout/episode_steps	215.5
+rollout/episodes	20
+total/duration	308.0793900489807
+total/episodes	20.0
+total/epochs	1
+total/steps	4310
+total/steps_per_second	13.989900458173345
+train/loss_actor	-0.00156211
+train/loss_critic	7.81123
+#############################

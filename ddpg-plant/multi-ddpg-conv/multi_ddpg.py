@@ -29,8 +29,8 @@ class DDPG(object):
                  gamma=0.99, tau=0.001, batch_size=128, action_range=(-1., 1.), critic_l2_reg=0,
                  actor_lr=1e-4, critic_lr=1e-3, clip_norm=None, reward_scale=1., n_hidden=64):
         """n_hidden is for lstm unit"""
-        self.t_value = 100
-        self.anneal_delta = 5
+        self.t_value = 10
+        self.anneal_delta = 1
         # train input
         self.obs0 = tf.placeholder(tf.float32, shape=(None,) + observation_shape, name='obs0')
         self.obs1 = tf.placeholder(tf.float32, shape=(None,) + observation_shape, name='obs1')
@@ -135,7 +135,15 @@ class DDPG(object):
     def setup_critic_optimizer(self):
         print('setting up critic optimizer')
         # Most cases ( train ), off policy
-        self.critic_loss = tf.reduce_mean(tf.square(self.critic_tf - self.critic_target)+tf.square(self.critic_qm))
+        #self.critic_loss = tf.reduce_mean(tf.multiply(tf.reduce_sum(self.mask, axis=1, keep_dims=True),tf.square(self.critic_tf - self.critic_target))+\
+        #    tf.reduce_sum(tf.square(self.critic_qm),axis=1, keep_dims=True))
+        loss1 = tf.multiply(tf.reduce_sum(self.mask0, axis=1, keep_dims=True),tf.square(self.critic_tf - self.critic_target))
+        loss2 = tf.reduce_sum(tf.square(self.critic_qm),axis=1, keep_dims=True)
+        self.critic_loss = tf.reduce_mean(loss1  + loss2)
+        #print("loss1 shape", loss1.get_shape().as_list())
+        #print("loss2 shape", loss2.get_shape().as_list())
+        
+        #print("loss shape", self.critic_loss.get_shape().as_list())
         if self.critic_l2_reg > 0.:
             critic_reg_vars = [var for var in self.critic.trainable_vars if
                                ('kernel' in var.name or 'W' in var.name) and 'output' not in var.name]

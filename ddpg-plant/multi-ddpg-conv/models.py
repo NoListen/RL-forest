@@ -236,7 +236,7 @@ class Conv_Critic(Model):
             p = tf.nn.relu(p)
 
             p = tf.layers.dense(p, self.time_step, kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
-            p = tf.nn.softmax(tf.divide(p/t))
+            p = tf.nn.softmax(tf.divide(p, t))
             # TODO add the temperature
             # p = tf.softmax(p/t)
             # TODO  v1 punish those probabilty to be zero
