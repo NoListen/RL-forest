@@ -82,7 +82,7 @@ class DDPG(object):
         self.actor_tf = actor(self.obs0, self.ul0, n_hidden)
         print("actor finished")
         self.critic_tf, self.critic_qm = critic(self.obs0, self.ul0, self.actions, self.mask0, self.t, n_hidden, mask_loss=True)
-        self.critic_with_actor_tf, self.prob, self.uq = critic(self.obs0, self.ul0, self.actor_tf, self.mask0, self.t, n_hidden, reuse=True, unit_data=True)
+        self.critic_with_actor_tf, self.uq = critic(self.obs0, self.ul0, self.actor_tf, self.mask0, self.t, n_hidden, reuse=True, unit_data=True)
 
         # well, it's combined from several units.
         Q_obs1 = target_critic(self.obs1, self.ul1, target_actor(self.obs1, self.ul1, n_hidden), self.mask1, self.t, n_hidden)
@@ -119,8 +119,9 @@ class DDPG(object):
         actor_shapes = [var.get_shape().as_list() for var in self.actor.trainable_vars]
         print('  actor shapes: {}'.format(actor_shapes))
         with tf.variable_scope('actor_optimizer'):
-            self.actor_optimizer = tf.train.AdamOptimizer(learning_rate=self.actor_lr,
-                                                      beta1=0.9, beta2=0.999,epsilon=1e-8)
+            #self.actor_optimizer = tf.train.AdamOptimizer(learning_rate=self.actor_lr,
+            #                                          beta1=0.9, beta2=0.999,epsilon=1e-8)
+            self.actor_optimizer = tf.train.RMSPropOptimizer(self.actor_lr, momentum=0.95, epsilon=0.01)
             # if apply gradients to specific variables, it will also update the critic network.
             actor_grads = tf.gradients(self.actor_loss, self.actor.trainable_vars)
             if self.clip_norm:
@@ -137,8 +138,8 @@ class DDPG(object):
         # Most cases ( train ), off policy
         #self.critic_loss = tf.reduce_mean(tf.multiply(tf.reduce_sum(self.mask, axis=1, keep_dims=True),tf.square(self.critic_tf - self.critic_target))+\
         #    tf.reduce_sum(tf.square(self.critic_qm),axis=1, keep_dims=True))
-        loss1 = tf.multiply(tf.reduce_sum(self.mask0, axis=1, keep_dims=True),tf.square(self.critic_tf - self.critic_target))
-        loss2 = tf.reduce_sum(tf.square(self.critic_qm),axis=1, keep_dims=True)
+        loss1 = tf.square(self.critic_tf - self.critic_target)
+        loss2 = tf.reduce_mean(tf.square(self.critic_qm),axis=1, keep_dims=True)
         self.critic_loss = tf.reduce_mean(loss1  + loss2)
         #print("loss1 shape", loss1.get_shape().as_list())
         #print("loss2 shape", loss2.get_shape().as_list())
@@ -158,8 +159,10 @@ class DDPG(object):
         critic_shapes = [var.get_shape().as_list() for var in self.critic.trainable_vars]
         print('  critic shapes: {}'.format(critic_shapes))
         with tf.variable_scope('critic_optimizer'):
-            self.critic_optimizer = tf.train.AdamOptimizer(learning_rate=self.critic_lr,
-                                                       beta1=0.9, beta2=0.999, epsilon=1e-8)
+            
+            self.critic_optimizer = tf.train.RMSPropOptimizer(self.critic_lr, momentum=0.95, epsilon=0.01)
+            #self.critic_optimizer = tf.train.AdamOptimizer(learning_rate=self.critic_lr,
+            #                                           beta1=0.9, beta2=0.999, epsilon=1e-8)
             critic_grads = tf.gradients(self.critic_loss, self.critic.trainable_vars)
             if self.clip_norm:
                 self.critic_grads,_ = tf.clip_by_global_norm(critic_grads, self.clip_norm)
@@ -207,12 +210,11 @@ class DDPG(object):
         # TODO utilize the map and enenmy's information in theb network computation.
         feed_dict = {self.ul0: [obs[0]],self.obs0: [obs[1]], self.mask0: [obs[2]], self.t: self.t_value}
         if compute_Q:
-            action, q, prob, uq = self.sess.run([actor_tf, self.critic_with_actor_tf, self.prob, self.uq], feed_dict=feed_dict)
+            action, q, uq = self.sess.run([actor_tf, self.critic_with_actor_tf, self.uq], feed_dict=feed_dict)
         else:
             action = self.sess.run(actor_tf, feed_dict=feed_dict)
             q = None
             uq = None
-            prob = None
         action = np.squeeze(action, [0])
         # I don't think the noise is adjusting to the action.
         if self.action_noise is not None and apply_noise:
@@ -223,7 +225,7 @@ class DDPG(object):
         #  Maybe I need a additional specification in this situation.
         # Continuous Space
         action = np.clip(action, self.action_range[0], self.action_range[1])
-        return action, q, prob, uq
+        return action, q, uq
 
     def store_transition(self, obs0, action, reward, obs1, terminal1):
         reward *= self.reward_scale

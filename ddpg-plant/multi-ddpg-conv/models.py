@@ -146,10 +146,14 @@ class Conv_Actor(Model):
                  ux = tc.layers.layer_norm(ux, center=True, scale=True)
             ux = tf.nn.relu(ux)
 
+            ux = tf.layers.dense(ux, 256, kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
+            if self.layer_norm:
+                ux = tc.layers.layer_norm(ux, center=True, scale=True)
+            ux = tf.nn.relu(ux)
             # number of convolution kernel. --> num_actions. default (-1, 1)
             # convert to [batch_size, time_step*n_hidden], channels_last
-            ux = tf.reshape(ux, [-1, self.time_step*n_hidden*2, 1])
-            ux = tf.layers.conv1d(ux, self.nb_unit_actions, kernel_size = n_hidden*2, strides = n_hidden*2,
+            ux = tf.reshape(ux, [-1, self.time_step*256, 1])
+            ux = tf.layers.conv1d(ux, self.nb_unit_actions, kernel_size = 256, strides = 256,
                                  kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
             # [ batch_size, time_step, nb_actions]
             ux = tf.nn.tanh(ux)
@@ -222,33 +226,37 @@ class Conv_Critic(Model):
                  ux = tc.layers.layer_norm(ux, center=True, scale=True)
             ux = tf.nn.relu(ux)
 
-            ux = tf.reshape(ux, [-1, self.time_step * n_hidden * 2, 1])
+            ux = tf.layers.dense(ux, 256, kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
+            if self.layer_norm:
+                ux = tc.layers.layer_norm(ux, center=True, scale=True)
+            #ux = tf.nn.relu(ux)
+            ux = tf.nn.dropout(ux, keep_prob=0.5)
+            ux = tf.reshape(ux, [-1, self.time_step * 256, 1])
             # Q value of each
-            q = tf.layers.conv1d(ux, 1, kernel_size=n_hidden*2, strides=n_hidden*2,
+            q = tf.layers.conv1d(ux, 1, kernel_size=256, strides=256,
                                  kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
             q = tf.squeeze(q, [-1])
 
-            p = tf.layers.conv1d(ux, 1, kernel_size=n_hidden*2, strides=n_hidden*2,
-                                 kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
-            p = tf.squeeze(p, [-1])
-            if self.layer_norm:
-                p = tc.layers.layer_norm(p, center=True, scale=True)
-            p = tf.nn.relu(p)
+            #p = tf.layers.conv1d(ux, 1, kernel_size=256, strides=256,
+            #                     kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
+            #p = tf.squeeze(p, [-1])
+            #if self.layer_norm:
+            #    p = tc.layers.layer_norm(p, center=True, scale=True)
+            #p = tf.nn.relu(p)
 
-            p = tf.layers.dense(p, self.time_step, kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
-            p = tf.nn.softmax(tf.divide(p, t))
+            #p = tf.layers.dense(p, self.time_step, kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
+            #p = tf.nn.softmax(tf.divide(p, t))
             # TODO add the temperature
-            # p = tf.softmax(p/t)
             # TODO  v1 punish those probabilty to be zero
             # TODO v2 punish the Q values to be zero
             """ kill the gradient using the mask """
             #print(p.get_shape().as_list(), q.get_shape().as_list(), "pq")
-            pQ = tf.multiply(p,q)
-            pQ_mask = tf.multiply(pQ, mask)
+            #pQ = tf.multiply(p,q)
+            Q_mask = tf.multiply(q, mask)
             #print(mask.get_shape().as_list(), pQ_mask.get_shape().as_list(), "mask")
-            Q = tf.reduce_sum(pQ_mask, axis=1, keep_dims=True)
+            Q = tf.reduce_sum(Q_mask, axis=1, keep_dims=True)
         if unit_data:
-            return Q,p,q
+            return Q,q
         if mask_loss:
             #TODO check this putput
             qm = tf.multiply(1-mask, q)

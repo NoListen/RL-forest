@@ -82,10 +82,10 @@ def parse_args():
     boolean_flag(parser, 'layer-norm', default=True)
     boolean_flag(parser, 'render', default=False)
     parser.add_argument('--seed', type=int, default=123457)
-    parser.add_argument('--critic-l2-reg', type=float, default=1e-4)
+    parser.add_argument('--critic-l2-reg', type=float, default=0)
     parser.add_argument('--batch-size', type=int, default=32)  # per MPI worker
-    parser.add_argument('--actor-lr', type=float, default=2e-5)
-    parser.add_argument('--critic-lr', type=float, default=1e-3)
+    parser.add_argument('--actor-lr', type=float, default=2e-4)
+    parser.add_argument('--critic-lr', type=float, default=2e-4)
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--reward-scale', type=float, default=1.)
     parser.add_argument('--clip-norm', type=float, default=None)
@@ -96,7 +96,7 @@ def parse_args():
     parser.add_argument('--frame-skip', type=int, default=2)
     # parser.add_argument('--nb-rollout-steps', type=int, default=300)  # per epoch cycle and MPI worker
     parser.add_argument('--noise-type', type=str,
-                        default='ou_0.1')  # choices are adaptive-param_xx, ou_xx, normal_xx, none
+                        default='ou_0.2')  # choices are adaptive-param_xx, ou_xx, normal_xx, none
     parser.add_argument('--logdir', type=str, default='checkpoints')
     boolean_flag(parser, 'evaluation', default=True)
 

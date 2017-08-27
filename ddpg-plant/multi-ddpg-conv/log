@@ -1,87 +1,435 @@
 epoch 0
 #############################
-eval/Q	0.00994353
+eval/Q	0.000240812
 eval/episodes	20
-eval/return	0.794
-eval/return_history	0.794
-eval/win_rate	0.9
-reference_Q_mean	0.0125588
-reference_Q_std	0.0206241
-reference_action_mean	-0.314888
-reference_action_std	0.914211
-reference_actor_Q_mean	0.013744
-reference_actor_Q_std	0.0206281
-rollout/Q_mean	0.00156041
-rollout/actions_mean	-0.136205
-rollout/actions_std	0.628412
-rollout/average_return over 100 episodes	-1.234
-rollout/avergae_return	-1.234
-rollout/duration	223.77352929115295
-rollout/episode_steps	211.75
+eval/return	-0.051
+eval/return_history	-0.051
+eval/win_rate	0.5
+reference_Q_mean	-0.0108802
+reference_Q_std	0.016065
+reference_action_mean	0.469767
+reference_action_std	0.833982
+reference_actor_Q_mean	-0.00734888
+reference_actor_Q_std	0.0162301
+rollout/Q_mean	-0.0403961
+rollout/actions_mean	-0.00166095
+rollout/actions_std	0.67767
+rollout/average_return over 100 episodes	-1.654
+rollout/avergae_return	-1.654
+rollout/duration	370.8112471103668
+rollout/episode_steps	196.1
 rollout/episodes	20
-total/duration	223.77359628677368
+total/duration	370.81140637397766
 total/episodes	20.0
 total/epochs	1
-total/steps	4235
-total/steps_per_second	18.925378464100383
-train/loss_actor	-0.00294623
-train/loss_critic	7.93073
-#############################
-epoch 1
-#############################
-eval/Q	0.031711
-eval/episodes	20
-eval/return	0.234
-eval/return_history	0.514
-eval/win_rate	0.8
-reference_Q_mean	0.0318387
-reference_Q_std	0.0461732
-reference_action_mean	0.231861
-reference_action_std	0.868992
-reference_actor_Q_mean	0.0326423
-reference_actor_Q_std	0.0467046
-rollout/Q_mean	0.0183179
-rollout/actions_mean	-0.255344
-rollout/actions_std	0.905602
-rollout/average_return over 100 episodes	-0.579
-rollout/avergae_return	0.076
-rollout/duration	284.64323806762695
-rollout/episode_steps	213.9
-rollout/episodes	40
-total/duration	508.4722807407379
-total/episodes	40.0
-total/epochs	2
-total/steps	8513
-total/steps_per_second	16.742308917210465
-train/loss_actor	-0.0129603
-train/loss_critic	1.17952
+total/steps	3922
+total/steps_per_second	10.576805169915705
+train/loss_actor	0.0590477
+train/loss_critic	0.00299193
 #############################
 epoch 0
 #############################
-eval/Q	0.00806673
+eval/Q	-0.0477742
 eval/episodes	20
-eval/return	0.115
-eval/return_history	0.115
-eval/win_rate	0.65
-reference_Q_mean	0.00663142
-reference_Q_std	0.0129189
-reference_action_mean	0.283204
-reference_action_std	0.8804
-reference_actor_Q_mean	0.00826594
-reference_actor_Q_std	0.0129945
-rollout/Q_mean	0.00183764
-rollout/actions_mean	0.0624501
-rollout/actions_std	0.55871
-rollout/average_return over 100 episodes	-1.769
-rollout/avergae_return	-1.769
-rollout/duration	308.0792324542999
-rollout/episode_steps	215.5
+eval/return	-1.244
+eval/return_history	-1.244
+eval/win_rate	0.0
+reference_Q_mean	-0.0306414
+reference_Q_std	0.0377108
+reference_action_mean	0.217333
+reference_action_std	0.900928
+reference_actor_Q_mean	-0.0263436
+reference_actor_Q_std	0.0374215
+rollout/Q_mean	-0.0442527
+rollout/actions_mean	-0.0431369
+rollout/actions_std	0.675885
+rollout/average_return over 100 episodes	-2.464
+rollout/avergae_return	-2.464
+rollout/duration	261.86510372161865
+rollout/episode_steps	208.95
 rollout/episodes	20
-total/duration	308.0793900489807
+total/duration	261.8652002811432
 total/episodes	20.0
 total/epochs	1
-total/steps	4310
-total/steps_per_second	13.989900458173345
-train/loss_actor	-0.00156211
-train/loss_critic	7.81123
+total/steps	4179
+total/steps_per_second	15.958592418974916
+train/loss_actor	0.0547251
+train/loss_critic	0.00328022
+#############################
+epoch 1
+#############################
+eval/Q	0.00253279
+eval/episodes	20
+eval/return	-4.756
+eval/return_history	-3.0
+eval/win_rate	0.0
+reference_Q_mean	0.00803881
+reference_Q_std	0.0304073
+reference_action_mean	-0.188723
+reference_action_std	0.923215
+reference_actor_Q_mean	0.0112042
+reference_actor_Q_std	0.0281981
+rollout/Q_mean	0.000332789
+rollout/actions_mean	0.0908069
+rollout/actions_std	0.873476
+rollout/average_return over 100 episodes	-1.8895
+rollout/avergae_return	-1.315
+rollout/duration	447.56864953041077
+rollout/episode_steps	235.25
+rollout/episodes	40
+total/duration	709.5134720802307
+total/episodes	40.0
+total/epochs	2
+total/steps	8884
+total/steps_per_second	12.521256254589357
+train/loss_actor	0.00176165
+train/loss_critic	0.00169032
+#############################
+epoch 2
+#############################
+eval/Q	0.0232653
+eval/episodes	20
+eval/return	-0.281
+eval/return_history	-2.09366666667
+eval/win_rate	0.15
+reference_Q_mean	0.0264724
+reference_Q_std	0.0456626
+reference_action_mean	0.113018
+reference_action_std	0.964
+reference_actor_Q_mean	0.0304966
+reference_actor_Q_std	0.044496
+rollout/Q_mean	0.0174438
+rollout/actions_mean	0.167607
+rollout/actions_std	0.889504
+rollout/average_return over 100 episodes	-1.39966666667
+rollout/avergae_return	-0.42
+rollout/duration	361.9283275604248
+rollout/episode_steps	208.85
+rollout/episodes	60
+total/duration	1071.4874460697174
+total/episodes	60.0
+total/epochs	3
+total/steps	13061
+total/steps_per_second	12.189596852402294
+train/loss_actor	-0.017094
+train/loss_critic	0.00151803
+#############################
+epoch 0
+#############################
+eval/Q	0.0352931
+eval/episodes	20
+eval/return	0.034
+eval/return_history	0.034
+eval/win_rate	0.5
+reference_Q_mean	0.0348956
+reference_Q_std	0.016024
+reference_action_mean	0.826477
+reference_action_std	0.385823
+reference_actor_Q_mean	0.0378688
+reference_actor_Q_std	0.0158934
+rollout/Q_mean	-0.0203837
+rollout/actions_mean	0.302664
+rollout/actions_std	0.497889
+rollout/average_return over 100 episodes	-2.136
+rollout/avergae_return	-2.136
+rollout/duration	265.27149629592896
+rollout/episode_steps	186.4
+rollout/episodes	20
+total/duration	265.27159428596497
+total/episodes	20.0
+total/epochs	1
+total/steps	3728
+total/steps_per_second	14.053521297803131
+train/loss_actor	0.0266318
+train/loss_critic	0.00400134
+#############################
+epoch 1
+#############################
+eval/Q	0.0157353
+eval/episodes	20
+eval/return	-0.591
+eval/return_history	-0.2785
+eval/win_rate	0.05
+reference_Q_mean	0.0660969
+reference_Q_std	0.0593459
+reference_action_mean	0.257373
+reference_action_std	0.801257
+reference_actor_Q_mean	0.0743445
+reference_actor_Q_std	0.0560137
+rollout/Q_mean	0.0386544
+rollout/actions_mean	0.518989
+rollout/actions_std	0.637146
+rollout/average_return over 100 episodes	-1.2835
+rollout/avergae_return	-0.431
+rollout/duration	339.9637176990509
+rollout/episode_steps	196.4
+rollout/episodes	40
+total/duration	605.3122270107269
+total/episodes	40.0
+total/epochs	2
+total/steps	7656
+total/steps_per_second	12.648018094411176
+train/loss_actor	-0.0481472
+train/loss_critic	0.00194213
+#############################
+epoch 2
+#############################
+eval/Q	0.095412
+eval/episodes	20
+eval/return	-1.126
+eval/return_history	-0.561
+eval/win_rate	0.2
+reference_Q_mean	0.159278
+reference_Q_std	0.113008
+reference_action_mean	0.54142
+reference_action_std	0.571529
+reference_actor_Q_mean	0.164338
+reference_actor_Q_std	0.111004
+rollout/Q_mean	0.0941237
+rollout/actions_mean	0.397511
+rollout/actions_std	0.635102
+rollout/average_return over 100 episodes	-1.028
+rollout/avergae_return	-0.517
+rollout/duration	371.5227756500244
+rollout/episode_steps	187.65
+rollout/episodes	60
+total/duration	976.8779973983765
+total/episodes	60.0
+total/epochs	3
+total/steps	11409
+total/steps_per_second	11.679042859379035
+train/loss_actor	-0.0942108
+train/loss_critic	0.00194143
+#############################
+epoch 3
+#############################
+eval/Q	0.29224
+eval/episodes	20
+eval/return	-0.095
+eval/return_history	-0.4445
+eval/win_rate	0.35
+reference_Q_mean	0.342266
+reference_Q_std	0.211743
+reference_action_mean	0.396509
+reference_action_std	0.654911
+reference_actor_Q_mean	0.349444
+reference_actor_Q_std	0.208662
+rollout/Q_mean	0.147197
+rollout/actions_mean	0.395284
+rollout/actions_std	0.632021
+rollout/average_return over 100 episodes	-0.86725
+rollout/avergae_return	-0.385
+rollout/duration	343.81546449661255
+rollout/episode_steps	219.8
+rollout/episodes	80
+total/duration	1320.7362592220306
+total/episodes	80.0
+total/epochs	4
+total/steps	15805
+total/steps_per_second	11.966810095234163
+train/loss_actor	-0.176082
+train/loss_critic	0.0021762
+#############################
+epoch 4
+#############################
+eval/Q	0.506715
+eval/episodes	20
+eval/return	-0.867
+eval/return_history	-0.529
+eval/win_rate	0.0
+reference_Q_mean	0.654066
+reference_Q_std	0.396204
+reference_action_mean	0.366171
+reference_action_std	0.6936
+reference_actor_Q_mean	0.671187
+reference_actor_Q_std	0.396092
+rollout/Q_mean	0.364823
+rollout/actions_mean	0.400112
+rollout/actions_std	0.659207
+rollout/average_return over 100 episodes	-0.8214
+rollout/avergae_return	-0.638
+rollout/duration	324.57091641426086
+rollout/episode_steps	188.0
+rollout/episodes	100
+total/duration	1645.3485038280487
+total/episodes	100.0
+total/epochs	5
+total/steps	19565
+total/steps_per_second	11.891097815739522
+train/loss_actor	-0.358333
+train/loss_critic	0.00364235
+#############################
+epoch 5
+#############################
+eval/Q	1.89115
+eval/episodes	20
+eval/return	-1.688
+eval/return_history	-0.8734
+eval/win_rate	0.05
+reference_Q_mean	4.04233
+reference_Q_std	1.97192
+reference_action_mean	0.545675
+reference_action_std	0.707215
+reference_actor_Q_mean	4.10486
+reference_actor_Q_std	1.93362
+rollout/Q_mean	1.09826
+rollout/actions_mean	0.304806
+rollout/actions_std	0.730547
+rollout/average_return over 100 episodes	-0.593
+rollout/avergae_return	-0.994
+rollout/duration	413.8584635257721
+rollout/episode_steps	202.2
+rollout/episodes	120
+total/duration	2059.245170354843
+total/episodes	120.0
+total/epochs	6
+total/steps	23609
+total/steps_per_second	11.464880597938595
+train/loss_actor	-1.41808
+train/loss_critic	0.0451719
+#############################
+epoch 6
+#############################
+eval/Q	5.01211
+eval/episodes	20
+eval/return	-0.191
+eval/return_history	-0.7934
+eval/win_rate	0.3
+reference_Q_mean	5.47326
+reference_Q_std	2.57753
+reference_action_mean	0.228876
+reference_action_std	0.896258
+reference_actor_Q_mean	5.5341
+reference_actor_Q_std	2.56319
+rollout/Q_mean	5.30471
+rollout/actions_mean	0.440106
+rollout/actions_std	0.740895
+rollout/average_return over 100 episodes	-0.5778
+rollout/avergae_return	-0.355
+rollout/duration	329.3462061882019
+rollout/episode_steps	190.5
+rollout/episodes	140
+total/duration	2388.619512796402
+total/episodes	140.0
+total/epochs	7
+total/steps	27419
+total/steps_per_second	11.47901532793729
+train/loss_actor	-4.86366
+train/loss_critic	0.154158
+#############################
+epoch 7
+#############################
+eval/Q	3.96523
+eval/episodes	20
+eval/return	-0.41
+eval/return_history	-0.6502
+eval/win_rate	0.15
+reference_Q_mean	4.61684
+reference_Q_std	1.95394
+reference_action_mean	0.335748
+reference_action_std	0.855007
+reference_actor_Q_mean	4.65758
+reference_actor_Q_std	1.95058
+rollout/Q_mean	4.54962
+rollout/actions_mean	0.331121
+rollout/actions_std	0.804524
+rollout/average_return over 100 episodes	-0.568
+rollout/avergae_return	-0.468
+rollout/duration	326.21153497695923
+rollout/episode_steps	188.95
+rollout/episodes	160
+total/duration	2714.8708851337433
+total/episodes	160.0
+total/epochs	8
+total/steps	31198
+total/steps_per_second	11.49152255115922
+train/loss_actor	-4.71063
+train/loss_critic	0.0680135
+#############################
+epoch 0
+#############################
+eval/Q	-0.0411813
+eval/episodes	20
+eval/return	-0.582
+eval/return_history	-0.582
+eval/win_rate	0.1
+reference_Q_mean	-0.0230742
+reference_Q_std	0.0298202
+reference_action_mean	0.447873
+reference_action_std	0.791932
+reference_actor_Q_mean	-0.0150248
+reference_actor_Q_std	0.0282573
+rollout/Q_mean	-0.0573119
+rollout/actions_mean	0.242631
+rollout/actions_std	0.592364
+rollout/average_return over 100 episodes	-1.716
+rollout/avergae_return	-1.716
+rollout/duration	266.38278341293335
+rollout/episode_steps	192.35
+rollout/episodes	20
+total/duration	266.38288140296936
+total/episodes	20.0
+total/epochs	1
+total/steps	3847
+total/steps_per_second	14.441618694635524
+train/loss_actor	0.051786
+train/loss_critic	0.00478661
+#############################
+epoch 1
+#############################
+eval/Q	0.063055
+eval/episodes	20
+eval/return	-1.251
+eval/return_history	-0.9165
+eval/win_rate	0.05
+reference_Q_mean	0.100036
+reference_Q_std	0.0854623
+reference_action_mean	0.61222
+reference_action_std	0.648816
+reference_actor_Q_mean	0.109223
+reference_actor_Q_std	0.083725
+rollout/Q_mean	0.0159047
+rollout/actions_mean	0.437269
+rollout/actions_std	0.710195
+rollout/average_return over 100 episodes	-1.7045
+rollout/avergae_return	-1.693
+rollout/duration	375.25233936309814
+rollout/episode_steps	229.35
+rollout/episodes	40
+total/duration	641.7158181667328
+total/episodes	40.0
+total/epochs	2
+total/steps	8434
+total/steps_per_second	13.142889361983359
+train/loss_actor	-0.0493842
+train/loss_critic	0.00293306
+#############################
+epoch 2
+#############################
+eval/Q	0.114575
+eval/episodes	20
+eval/return	-3.412
+eval/return_history	-1.74833333333
+eval/win_rate	0.0
+reference_Q_mean	0.176858
+reference_Q_std	0.146621
+reference_action_mean	0.572813
+reference_action_std	0.699117
+reference_actor_Q_mean	0.197949
+reference_actor_Q_std	0.148591
+rollout/Q_mean	0.0613518
+rollout/actions_mean	0.32062
+rollout/actions_std	0.761328
+rollout/average_return over 100 episodes	-1.84233333333
+rollout/avergae_return	-2.118
+rollout/duration	388.2867500782013
+rollout/episode_steps	227.15
+rollout/episodes	60
+total/duration	1030.0425343513489
+total/episodes	60.0
+total/epochs	3
+total/steps	12977
+total/steps_per_second	12.598508864657747
+train/loss_actor	-0.117008
+train/loss_critic	0.00302404
 #############################
