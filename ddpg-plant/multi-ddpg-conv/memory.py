@@ -15,7 +15,7 @@ Engineering Problem
 
 
 class RingBuffer(object):
-    def __init__(self, maxlen, shape, dtype=np.float32):
+    def __init__(self, maxlen, shape, dtype="float32"):
         self.maxlen = maxlen
         self.start = 0
         self.length = 0
@@ -58,18 +58,18 @@ class Memory(object):
     def __init__(self, limit, action_shape, observation_shape, unit_location_shape,
                  mask_shape):
         self.limit = limit
-
+        self.type="simple"
         # TODO change unit_location and mask as boolean type
-        self.ul0 = RingBuffer(limit, shape=unit_location_shape, dtype=np.uint8)
-        self.ul1 = RingBuffer(limit, shape=unit_location_shape, dtype=np.uint8)
-        self.observations0 = RingBuffer(limit, shape=observation_shape, dtype=np.uint8)
+        self.ul0 = RingBuffer(limit, shape=unit_location_shape, dtype="uint8")
+        self.ul1 = RingBuffer(limit, shape=unit_location_shape, dtype="uint8")
+        self.observations0 = RingBuffer(limit, shape=observation_shape, dtype="uint8")
         # process the observation in different manners.
-        self.mask0 = RingBuffer(limit, shape=mask_shape, dtype=np.uint8)
-        self.mask1 = RingBuffer(limit, shape=mask_shape,  dtype=np.uint8)
+        self.mask0 = RingBuffer(limit, shape=mask_shape, dtype="uint8")
+        self.mask1 = RingBuffer(limit, shape=mask_shape,  dtype="uint8")
         self.actions = RingBuffer(limit, shape=action_shape)
         self.rewards = RingBuffer(limit, shape=(1,))
         self.terminals1 = RingBuffer(limit, shape=(1,))
-        self.observations1 = RingBuffer(limit, shape=observation_shape, dtype=np.uint8)
+        self.observations1 = RingBuffer(limit, shape=observation_shape, dtype="uint8")
         self.length = 0
 
 
@@ -118,3 +118,82 @@ class Memory(object):
     @property
     def nb_entries(self):
         return len(self.observations0)
+
+class ObservationBuffer(object):
+    def __init__(self, limit, observation_shape, observation_dtype):
+        assert (observation_dtype.keys() == observation_dtype.keys())
+        self.d = {}
+        # not list. belong to class dict_keys.
+        self.k_set = observation_dtype.keys()
+        for k in observation_dtype.keys():
+            self.d[k] = RingBuffer(limit, shape=observation_shape[k], dtype=observation_dtype[k])
+
+    def get_batch(self, batch_idx):
+        b = {}
+        for k in self.k_set:
+            b[k] = array_min2d(self.d[k].get_batch(batch_idx))
+        return b
+
+    def append(self, v):
+        assert(v.keys() == self.k_set)
+        for k in self.k_set:
+            self.d[k].append(v[k])
+
+
+    def __len__(self):
+        # pass the length to the upper level
+        return len(self.d[self.k_set[0]])
+
+# similar to memory actually
+# obs is a dictionary stored in Observation Buffer
+class CompoundMemory(object):
+    def __init__(self, limit, action_shape, observation_shape, observation_dtype):
+        self.limit = limit
+
+        assert(isinstance(observation_shape, dict))
+        assert(isinstance(observation_dtype, dict))
+        self.observations0 = ObservationBuffer(limit, observation_shape, observation_dtype)
+        self.observations1 = ObservationBuffer(limit, observation_shape, observation_dtype)
+        self.actions = RingBuffer(limit, shape=action_shape)
+        self.rewards = RingBuffer(limit, shape=(1,))
+        # can be changed to boolean
+        self.type = "compound"
+        self.terminals1 = RingBuffer(limit, shape=(1,))
+        self.length = 0
+
+
+
+    def sample(self, batch_size):
+        # Draw such that we always have a proceeding element.
+        batch_idxs = np.random.random_integers(self.nb_entries - 2, size=batch_size)
+        obs0_batch = self.observations0.get_batch(batch_idxs)
+        obs1_batch = self.observations1.get_batch(batch_idxs)
+        action_batch = self.actions.get_batch(batch_idxs)
+        reward_batch = self.rewards.get_batch(batch_idxs)
+        terminal1_batch = self.terminals1.get_batch(batch_idxs)
+
+        result = {
+            'obs0': obs0_batch,
+            'obs1': obs1_batch,
+            'rewards': array_min2d(reward_batch),
+            'actions': array_min2d(action_batch),
+            'terminals1': array_min2d(terminal1_batch)
+        }
+
+        return result
+
+    # when it is changed. I think training will be changed.
+    def append(self, obs0, action, reward, obs1, terminal1, training=True):
+        if not training:
+            return
+        self.length = min(self.limit, self.length+1)
+        self.observations0.append(obs0)
+        self.actions.append(action)
+        self.rewards.append(reward)
+        self.observations1.append(obs1)
+        self.terminals1.append(terminal1)
+
+    @property
+    def nb_entries(self):
+        return len(self.observations0)
+
