@@ -281,10 +281,10 @@ class Dynamic_DDPG(object):
             self.stats_sample = self.memory.sample(batch_size=self.batch_size)
         feed_dict = {self.obs0["k"]: self.stats_sample["obs0"][k] for k in self.obs0.keys()}
         feed_dict.update({
-            self.actions:P self.stats_sample["actions"]
+            self.actions:self.stats_sample["actions"]
         })
         values = self.sess.run(self.stats_ops, feed_dict=feed_dict)
-        
+
         names = self.stats_names[:]
         assert len(names) == len(values)
         stats = dict(zip(names, values))

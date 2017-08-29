@@ -14,15 +14,15 @@ from misc_util import (
     boolean_flag )
 
 import training
-from models import Conv_Actor, Conv_Critic
-from memory import Memory
+from models import Conv_Actor, Conv_Critic, Dynamic_Conv_Actor, Dynamic_Conv_Critic
+from memory import Memory, CompoundMemory
 from noise import *
 
 import gym
 import tensorflow as tf
 import os
 
-def run(env_id, seed, noise_type, layer_norm, logdir, evaluation, nb_units, ip, port, frame_skip, **kwargs):
+def run(env_id, seed, noise_type, layer_norm, logdir, evaluation, nb_units, ip, port, dynamic, frame_skip, **kwargs):
     kwargs['logdir'] = logdir
     print("Well I am going to print the ip", ip)
     # remove evaluation environment.
@@ -49,10 +49,14 @@ def run(env_id, seed, noise_type, layer_norm, logdir, evaluation, nb_units, ip, 
         else:
             raise RuntimeError('unknown noise type "{}"'.format(current_noise_type))
     # Configure components.
-    memory = Memory(limit=int(1e6), action_shape=env.action_space.shape, observation_shape=env.observation_space.shape, 
-        unit_location_shape=env.unit_location_shape, mask_shape=env.mask_shape)
-    critic = Conv_Critic(layer_norm=layer_norm, time_step=nb_units)
-    actor = Conv_Actor(nb_unit_actions, layer_norm=layer_norm, time_step=nb_units)
+
+    if not dynamic:
+        memory = Memory(limit=int(1e6), action_shape=env.action_space.shape, observation_shape=env.observation_space.shape,
+            unit_location_shape=env.unit_location_shape, mask_shape=env.mask_shape)
+        critic = Conv_Critic(layer_norm=layer_norm, time_step=nb_units)
+        actor = Conv_Actor(nb_unit_actions, layer_norm=layer_norm, time_step=nb_units)
+    else:
+        memory = CompoundMemory(limit=int(1e6), action_shape=env.action_space.shape, observation_shape=env.observation_space)
 
     # Seed everything to make things reproducible.
 
