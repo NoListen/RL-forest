@@ -25,10 +25,16 @@ def get_target_updates(vars, target_vars, tau):
 
 # the observation is consistent among the "1. memory 2. model 3. env"
 def build_obs_placeholder(observation_shape, observation_dtype, name):
-    assert observation_dtype.keys() == observation_shape.keys(), "the keys of shape and dtype are not consistent"
     d = {}
-    for k in observation_dtype.keys():
-        d[k] = tf.placeholder(observation_dtype[k], observation_shape[k], name=name+"_"+k)
+    for k in observation_shape.keys():
+        obs_shape = (None,) + observation_shape[k]
+        obs_name = name + "_" + k
+        obs_dtype = observation_dtype[k]
+        # no computation supports uint8
+        if obs_dtype == "uint8":
+            obs_dtype = "float32"
+        print(obs_name+" has shape ", obs_shape)
+        d[k] = tf.placeholder(obs_dtype, obs_shape, name=obs_name)
     return d
 
 # PAY ATTENTION to observation_shape
@@ -37,14 +43,14 @@ class Dynamic_DDPG(object):
                  gamma=0.99, tau=0.001, batch_size=128, action_range=(-1., 1.), critic_l2_reg=0,
                  actor_lr=1e-4, critic_lr=1e-3, clip_norm=None, reward_scale=1., n_hidden=64):
         """n_hidden is for lstm unit"""
-        assert memory.dtype=="compound", "compound"
+        assert memory.cls=="compound", "compound"
 
         # self.t_value = 10
         # self.anneal_delta = 1
 
         # train input
         self.obs0 = build_obs_placeholder(observation_shape, observation_dtype, "obs0")
-        self.obs1 = build_obs_placeholder(observation_shape, observation_dtype,'obs1')
+        self.obs1 = build_obs_placeholder(observation_shape, observation_dtype, 'obs1')
         self.t = tf.placeholder(tf.float32, None, name="temperature")
 
         self.terminals1 = tf.placeholder(tf.float32, shape=(None, 1), name='terminals1')
@@ -80,16 +86,15 @@ class Dynamic_DDPG(object):
 
         # Create networks and core TF parts that are shared across setup parts.
         # When the network is too wide or deep, it tends to be overfitting.
-        print("I am building the actor")
-        self.actor_tf = actor(self.obs0, n_hidden)
-        print("actor finished")
+        self.actor_tf = actor(n_hidden=n_hidden, **self.obs0)
         # change the __call__ parameters to be "map" rather than the "observation"
         # map the dictionary to those variables
-        self.critic_tf = critic(self.obs0, self.actions, n_hidden)
-        self.critic_with_actor_tf, self.uq = critic(self.obs0, self.actor_tf, n_hidden, reuse=True, unit_data=True)
+        self.critic_tf = critic(action=self.actions, n_hidden=n_hidden,**self.obs0)
+        self.critic_with_actor_tf, self.uq = critic(action=self.actor_tf, n_hidden=n_hidden, reuse=True, unit_data=True,
+                                             **self.obs0)
 
         # well, it's combined from several units.
-        Q_obs1 = target_critic(self.obs1, target_actor(self.obs1, self.ul1, n_hidden), n_hidden=n_hidden)
+        Q_obs1 = target_critic(action=target_actor(n_hidden=n_hidden, **self.obs1), n_hidden=n_hidden, **self.obs1)
         self.target_Q = self.rewards + (1. - self.terminals1) * gamma * Q_obs1
 
         # Set up parts.
@@ -208,7 +213,7 @@ class Dynamic_DDPG(object):
         """ Obs is composed of [[myself_obs, mask], [enemy_obs, mask], map] """
         # NOW i want to know the network's memorization ability. MODEL the enemy.
         # dead one will be ignored by my environment.
-        assert obs.keys == self.obs0.keys(), "the observation is not valid. Can't be used to compute the policy"
+        assert obs.keys() == self.obs0.keys(), "the observation is not valid. Can't be used to compute the policy"
 
         actor_tf = self.actor_tf
         # TODO utilize the map and enenmy's information in theb network computation.
@@ -279,7 +284,7 @@ class Dynamic_DDPG(object):
             # Get a sample and keep that fixed for all further computations.
             # This allows us to estimate the change in value for the same set of inputs.
             self.stats_sample = self.memory.sample(batch_size=self.batch_size)
-        feed_dict = {self.obs0["k"]: self.stats_sample["obs0"][k] for k in self.obs0.keys()}
+        feed_dict = {self.obs0[k]: self.stats_sample["obs0"][k] for k in self.obs0.keys()}
         feed_dict.update({
             self.actions:self.stats_sample["actions"]
         })

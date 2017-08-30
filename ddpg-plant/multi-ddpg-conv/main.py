@@ -8,12 +8,14 @@ from tempfile import mkdtemp
 import sys
 import json
 import gym_starcraft.envs.war_map_battle_env as sc
+import gym_starcraft.envs.dynamic_battle_env as dsc
 
 from misc_util import (
     set_global_seeds,
     boolean_flag )
 
 import training
+import dynamic_training
 from models import Conv_Actor, Conv_Critic, Dynamic_Conv_Actor, Dynamic_Conv_Critic
 from memory import Memory, CompoundMemory
 from noise import *
@@ -27,7 +29,10 @@ def run(env_id, seed, noise_type, layer_norm, logdir, evaluation, nb_units, ip, 
     print("Well I am going to print the ip", ip)
     # remove evaluation environment.
     if env_id == "StarCraft":
-        env = sc.WarMapBattleEnv(ip, port, frame_skip = frame_skip)
+        if not dynamic:
+            env = sc.WarMapBattleEnv(ip, port, frame_skip = frame_skip)
+        else:
+            env = dsc.DynamicBattleEnv(ip, port, frame_skip = frame_skip)
     else:
         env = gym.make(env_id)
 
@@ -56,7 +61,10 @@ def run(env_id, seed, noise_type, layer_norm, logdir, evaluation, nb_units, ip, 
         critic = Conv_Critic(layer_norm=layer_norm, time_step=nb_units)
         actor = Conv_Actor(nb_unit_actions, layer_norm=layer_norm, time_step=nb_units)
     else:
-        memory = CompoundMemory(limit=int(1e6), action_shape=env.action_space.shape, observation_shape=env.observation_space)
+        critic = Dynamic_Conv_Critic(layer_norm=layer_norm, time_step=nb_units)
+        actor = Dynamic_Conv_Actor(nb_unit_actions, layer_norm=layer_norm, time_step=nb_units)
+        memory = CompoundMemory(limit=int(1e6), action_shape=env.action_space.shape, observation_shape=env.observation_shape,
+            observation_dtype=env.observation_dtype)
 
     # Seed everything to make things reproducible.
 
@@ -66,9 +74,12 @@ def run(env_id, seed, noise_type, layer_norm, logdir, evaluation, nb_units, ip, 
 
     # Disable logging for rank != 0 to avoid noise.
     start_time = time.time()
-    training.train(env=env, action_noise=action_noise, actor=actor, critic=critic, memory=memory,
+    if not dynamic:
+        training.train(env=env, action_noise=action_noise, actor=actor, critic=critic, memory=memory,
                    evaluation=evaluation ,**kwargs)
-
+    else:
+        dynamic_training.train(env=env, action_noise=action_noise, actor=actor, critic=critic, memory=memory,
+                   evaluation=evaluation, **kwargs)
     env.close()
     print('total runtime: {}s'.format(time.time() - start_time))
 
@@ -80,6 +91,7 @@ def parse_args():
     parser.add_argument('--ip', help="server ip")
     parser.add_argument('--port', help="server port", type=int, default=11111)
     parser.add_argument('--save-epoch-interval', type=int, default=5)
+    parser.add_argument('--dynamic', default=True)
 
     parser.add_argument('--nb-units', type=int, default=5)
     boolean_flag(parser, 'render-eval', default=False)

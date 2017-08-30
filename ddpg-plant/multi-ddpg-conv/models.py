@@ -291,7 +291,10 @@ class Dynamic_Conv_Actor(Model):
     # static [1, 0, 0, 0, 1] dynamic [1, 1, 0, 0, 0]
     # different arrangements of alive units.
 
-    def __call__(self, obs, unit_locations, sequence_length, n_hidden=256, reuse=False):
+
+
+    # not use mask temproally
+    def __call__(self, s, ul, mask, au, n_hidden=256, reuse=False):
         with tf.variable_scope(self.name) as scope:
             if reuse:
                 scope.reuse_variables()
@@ -303,9 +306,9 @@ class Dynamic_Conv_Actor(Model):
             # self.split = tf.placeholder(tf.int32, [None])
 
             # embedding
-            x = obs
+            x = s
             # [batch_size, myself_num, ms, ms, 1]
-            u = unit_locations
+            u = ul
             u_shape = u.get_shape().as_list()
             # tf.shape maybe also ok
             assert (u_shape[1] == self.time_step)
@@ -357,7 +360,7 @@ class Dynamic_Conv_Actor(Model):
             # TODO use output_states for process like policy iteration ---- WOW exciting ideas.
             ux, _ = tf.nn.bidirectional_dynamic_rnn(lstm_fw_cell, lstm_bw_cell, ux,
                                                                      dtype=tf.float32,
-                                                                     sequence_length=sequence_length)
+                                                                     sequence_length=au)
             ux = tf.concat(ux, 2)
 
             # TODO v2 turn on the batch_norm after lstm
@@ -385,14 +388,14 @@ class Dynamic_Conv_Critic(Model):
         self.time_step = time_step
 
     # the parameter's location has been changed
-    def __call__(self, obs, unit_locations, mask, action, n_hidden=64, reuse=False, unit_data=False):
+    def __call__(self, s, ul, mask, au, action, n_hidden=64, reuse=False, unit_data=False):
         with tf.variable_scope(self.name) as scope:
             if reuse:
                 scope.reuse_variables()
 
             # x [ batch_size*time_step, DATA_NUM]
-            x = obs
-            u = unit_locations
+            x = s
+            u = ul
 
             u_shape = u.get_shape().as_list()
             assert (u_shape[1] == self.time_step)
@@ -439,7 +442,8 @@ class Dynamic_Conv_Critic(Model):
             lstm_bw_cell = rnn.BasicLSTMCell(n_hidden, forget_bias=1.0)
 
             ux, _ = tf.nn.bidirectional_dynamic_rnn(lstm_fw_cell, lstm_bw_cell, ux,
-                                                   dtype=tf.float32)
+                                                   dtype=tf.float32,
+                                                   sequence_length=au)
             ux = tf.concat(ux, 2)
             # TODO v2 turn on the batch_norm after lstm
             if self.layer_norm:

@@ -158,7 +158,6 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, ac
             duration = time.time() - start_time
             stats = agent.get_stats()
             combined_stats = {}
-            agent.anneal_t()
             for key in sorted(stats.keys()):
                 combined_stats[key] = np.mean(stats[key])
 

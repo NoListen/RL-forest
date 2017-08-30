@@ -58,7 +58,7 @@ class Memory(object):
     def __init__(self, limit, action_shape, observation_shape, unit_location_shape,
                  mask_shape):
         self.limit = limit
-        self.type="simple"
+        self.cls="simple"
         # TODO change unit_location and mask as boolean type
         self.ul0 = RingBuffer(limit, shape=unit_location_shape, dtype="uint8")
         self.ul1 = RingBuffer(limit, shape=unit_location_shape, dtype="uint8")
@@ -124,18 +124,19 @@ class ObservationBuffer(object):
         assert (observation_dtype.keys() == observation_dtype.keys())
         self.d = {}
         # not list. belong to class dict_keys.
-        self.k_set = observation_dtype.keys()
+        self.k_set = list(observation_dtype.keys())
         for k in observation_dtype.keys():
             self.d[k] = RingBuffer(limit, shape=observation_shape[k], dtype=observation_dtype[k])
 
     def get_batch(self, batch_idx):
         b = {}
         for k in self.k_set:
-            b[k] = array_min2d(self.d[k].get_batch(batch_idx))
+            #b[k] = array_min2d(self.d[k].get_batch(batch_idx))
+            b[k] = self.d[k].get_batch(batch_idx)
         return b
 
     def append(self, v):
-        assert(v.keys() == self.k_set)
+        assert(list(v.keys()) == self.k_set)
         for k in self.k_set:
             self.d[k].append(v[k])
 
@@ -157,7 +158,7 @@ class CompoundMemory(object):
         self.actions = RingBuffer(limit, shape=action_shape)
         self.rewards = RingBuffer(limit, shape=(1,))
         # can be changed to boolean
-        self.type = "compound"
+        self.cls = "compound"
         self.terminals1 = RingBuffer(limit, shape=(1,))
         self.length = 0
 
