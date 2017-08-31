@@ -80,7 +80,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, ac
 
                     action, q, uq = agent.pi(obs, apply_noise=True, compute_Q=True)
                     assert action.shape == env.action_space.shape
-
+                    print(action)
                     if render:
                         env.render()
                     assert max_action.shape == action.shape
@@ -97,11 +97,6 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, ac
                     epoch_actions.append(action)
                     epoch_qs.append(q)
                     #print(t, done)
-                    if agent.memory.length > 50*batch_size:
-                        cl, al = agent.train()
-                        epoch_critic_losses.append(cl)
-                        epoch_actor_losses.append(al)
-                        agent.update_target_net()
 
                     # TODO revise the agent to include the mask.
                     # TODO scale the data in the map.
@@ -115,6 +110,12 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, ac
                     agent.store_transition(obs, action, r, new_obs, done)
                     obs = new_obs
                     if done:
+                        for _ in range(32):
+                            if agent.memory.length > 50*batch_size:
+                                cl, al = agent.train()
+                                epoch_critic_losses.append(cl)
+                                epoch_actor_losses.append(al)
+                                agent.update_target_net()
                         # Episode done.
                         epoch_episode_rewards.append(episode_reward)
                         episode_rewards_history.append(episode_reward)
@@ -142,7 +143,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, ac
                            max_action * eval_action)  # scale for execution in env (as far as DDPG is concerned, every action is in [-1, 1])
                        eval_episode_reward += eval_r
                        eval_qs.append(eval_q)
-                       print(eval_uq)
+                       print(eval_action)
                        if done:
                            if eval_episode_reward > 0:
                                eval_wins += 1
