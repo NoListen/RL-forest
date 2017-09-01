@@ -59,6 +59,116 @@ class Model(object):
 
 # Initialization can't be determined temporally
 
+# simple
+class Dynamic_Actor(Model):
+    def __init__(self, nb_unit_actions, name='actor', layer_norm=True, time_step=5):
+        super(Actor, self).__init__(name=name)
+        self.nb_unit_actions = nb_unit_actions
+        self.layer_norm = layer_norm
+        self.time_step = time_step
+
+    # au alive units.
+    def __call__(self, obs, au, n_hidden=64, reuse=False):
+        with tf.variable_scope(self.name) as scope:
+            if reuse:
+                scope.reuse_variables()
+            x = obs
+            x = tf.layers.dense(x, 64)
+            if self.layer_norm:
+                x = tc.layers.layer_norm(x, center=True, scale=True)
+            x = tf.nn.relu(x)  # no need to extend one dimension
+
+            shape = x.get_shape().as_list()
+            x = tf.reshape(x, [-1, self.time_step, shape[-1]])
+            # build bidirection lstm
+            lstm_fw_cell = rnn.BasicLSTMCell(n_hidden, forget_bias=1.0)
+            lstm_bw_cell = rnn.BasicLSTMCell(n_hidden, forget_bias=1.0)
+            x, _ = tf.nn.bidirectional_dynamic_rnn(lstm_fw_cell, lstm_bw_cell, x,
+                                                   dtype=tf.float32,
+                                                   sequence_length=au)
+            x = tf.concat(x, 2)
+
+            # TODO v2 turn on the batch_norm after lstm
+            # if self.layer_norm:
+            #     x = tc.layers.layer_norm(x, center=True, scale=True)
+            # x = tf.nn.relu(x)
+
+            x = tf.reshape(x, [-1, self.time_step * n_hidden * 2, 1])
+            x = tf.layers.conv1d(x, self.nb_unit_actions, kernel_size=n_hidden * 2, strides=n_hidden * 2,
+                                 kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
+            x = tf.nn.tanh(x)
+        return x
+
+class Dynamic_Critic(Model):
+    def __init__(self, name='critic', layer_norm=True, time_step=5):
+        super(Critic, self).__init__(name=name)
+        self.layer_norm = layer_norm
+        self.time_step = time_step
+
+    def __call__(self, obs, action, mask, au,  n_hidden=64, reuse=False, unit_data = False):
+        with tf.variable_scope(self.name) as scope:
+            if reuse:
+                scope.reuse_variables()
+
+            # x [ batch_size*time_step, DATA_NUM]
+            x = obs
+            x = tf.layers.dense(x, 64)
+            if self.layer_norm:
+                x = tc.layers.layer_norm(x, center=True, scale=True)
+            x = tf.nn.relu(x)
+
+            # format action to be [ batch_size*time_step, nb_actions]
+            x = tf.concat([x, action], axis=-1)
+
+            # another dense layer
+            x = tf.layers.dense(x, 64)
+            if self.layer_norm:
+                x = tc.layers.layer_norm(x, center=True, scale=True)
+            x = tf.nn.relu(x)
+
+            shape = x.get_shape().as_list()
+            x = tf.reshape(x, [-1, self.time_step, shape[-1]])
+
+            lstm_fw_cell = rnn.BasicLSTMCell(n_hidden, forget_bias=1.0)
+            lstm_bw_cell = rnn.BasicLSTMCell(n_hidden, forget_bias=1.0)
+
+            x, _ = tf.nn.bidirectional_dynamic_rnn(lstm_fw_cell, lstm_bw_cell, x,
+                                                   dtype=tf.float32,
+                                                   sequence_length=au)
+            x = tf.concat(x, 2)
+            # TODO v2 turn on the batch_norm after lstm
+            # if self.layer_norm:
+            #     x = tc.layers.layer_norm(x, center=True, scale=True)
+            # x = tf.nn.relu(x)
+
+            x = tf.reshape(x, [-1, self.time_step * n_hidden * 2, 1])
+            # Q value of each
+            q = tf.layers.conv1d(x, 1, kernel_size=n_hidden*2, strides=n_hidden*2,
+                                 kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
+            q = tf.squeeze(q, [-1])
+
+            # p = tf.layers.conv1d(x, 1, kernel_size=n_hidden*2, strides=n_hidden*2,
+            #                      kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
+            # p = tf.squeeze(p, [-1])
+            # if self.layer_norm:
+            #     p = tc.layers.layer_norm(p, center=True, scale=True)
+            # p = tf.nn.relu(p)
+            #
+            # p = tf.layers.dense(p, self.time_step, kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
+            # p = tf.nn.softmax(p)
+            Q_mask = tf.multiply(q, mask)
+            #print(mask.get_shape().as_list(), pQ_mask.get_shape().as_list(), "mask")
+            Q = tf.reduce_sum(Q_mask, axis=1, keep_dims=True)
+            #print(Q.get_shape().as_list, "Q")
+        if unit_data:
+            return Q, Q_mask
+        return Q
+
+    @property
+    def output_vars(self):
+        output_vars = [var for var in self.trainable_vars if 'output' in var.name]
+        return output_vars
+
 class Conv_Actor(Model):
     def __init__(self, nb_unit_actions, name='actor', layer_norm=True, time_step=5):
         super(Conv_Actor, self).__init__(name=name)

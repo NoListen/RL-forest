@@ -8,7 +8,8 @@ from tempfile import mkdtemp
 import sys
 import json
 import gym_starcraft.envs.war_map_battle_env as sc
-import gym_starcraft.envs.dynamic_battle_env as dsc
+# import gym_starcraft.envs.dynamic_battle_env as dsc
+import gym_starcraft.envs.compound_battle_env as dsc
 
 from misc_util import (
     set_global_seeds,
@@ -16,7 +17,7 @@ from misc_util import (
 
 import training
 import dynamic_training
-from models import Conv_Actor, Conv_Critic, Dynamic_Conv_Actor, Dynamic_Conv_Critic
+from models import Conv_Actor, Conv_Critic, Dynamic_Conv_Actor, Dynamic_Conv_Critic, Dynamic_Actor, Dynamic_Critic
 from memory import Memory, CompoundMemory
 from noise import *
 
@@ -24,7 +25,7 @@ import gym
 import tensorflow as tf
 import os
 
-def run(env_id, seed, noise_type, layer_norm, logdir, evaluation, nb_units, ip, port, dynamic, frame_skip, **kwargs):
+def run(env_id, seed, noise_type, layer_norm, logdir, evaluation, nb_units, ip, port, dynamic, simple, frame_skip, **kwargs):
     kwargs['logdir'] = logdir
     print("Well I am going to print the ip", ip)
     # remove evaluation environment.
@@ -32,7 +33,7 @@ def run(env_id, seed, noise_type, layer_norm, logdir, evaluation, nb_units, ip, 
         if not dynamic:
             env = sc.WarMapBattleEnv(ip, port, frame_skip = frame_skip)
         else:
-            env = dsc.DynamicBattleEnv(ip, port, frame_skip = frame_skip)
+            env = dsc.Compound(ip, port, frame_skip = frame_skip, map_types_table=("unit_data",))
     else:
         env = gym.make(env_id)
 
@@ -61,8 +62,12 @@ def run(env_id, seed, noise_type, layer_norm, logdir, evaluation, nb_units, ip, 
         critic = Conv_Critic(layer_norm=layer_norm, time_step=nb_units)
         actor = Conv_Actor(nb_unit_actions, layer_norm=layer_norm, time_step=nb_units)
     else:
-        critic = Dynamic_Conv_Critic(layer_norm=layer_norm, time_step=nb_units)
-        actor = Dynamic_Conv_Actor(nb_unit_actions, layer_norm=layer_norm, time_step=nb_units)
+        if simple:
+            actor = Dynamic_Actor(nb_unit_actions, layer_norm=layer_norm, time_step=nb_units)
+            critic = Dynamic_Critic(layer_norm=layer_norm, time_step=nb_units)
+        else:
+            critic = Dynamic_Conv_Critic(layer_norm=layer_norm, time_step=nb_units)
+            actor = Dynamic_Conv_Actor(nb_unit_actions, layer_norm=layer_norm, time_step=nb_units)
         memory = CompoundMemory(limit=int(1e6), action_shape=env.action_space.shape, observation_shape=env.observation_shape,
             observation_dtype=env.observation_dtype)
 
@@ -92,9 +97,9 @@ def parse_args():
     parser.add_argument('--port', help="server port", type=int, default=11111)
     parser.add_argument('--save-epoch-interval', type=int, default=5)
     parser.add_argument('--dynamic', default=True)
-
+    parser.add_argument('--simple', default=True)
     parser.add_argument('--nb-units', type=int, default=5)
-    boolean_flag(parser, 'render-eval', default=False)
+    # boolean_flag(parser, 'render-eval', default=False)
     boolean_flag(parser, 'layer-norm', default=True)
     boolean_flag(parser, 'render', default=False)
     parser.add_argument('--seed', type=int, default=123457)
