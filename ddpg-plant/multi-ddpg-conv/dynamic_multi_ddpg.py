@@ -26,6 +26,7 @@ def get_target_updates(vars, target_vars, tau):
 # the observation is consistent among the "1. memory 2. model 3. env"
 def build_obs_placeholder(observation_shape, observation_dtype, name):
     d = {}
+    print("building all the observation", list([observation_shape.keys()]))
     for k in observation_shape.keys():
         obs_shape = (None,) + observation_shape[k]
         obs_name = name + "_" + k

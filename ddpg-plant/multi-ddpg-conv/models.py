@@ -62,17 +62,17 @@ class Model(object):
 # simple
 class Dynamic_Actor(Model):
     def __init__(self, nb_unit_actions, name='actor', layer_norm=True, time_step=5):
-        super(Actor, self).__init__(name=name)
+        super(Dynamic_Actor, self).__init__(name=name)
         self.nb_unit_actions = nb_unit_actions
         self.layer_norm = layer_norm
         self.time_step = time_step
 
     # au alive units.
-    def __call__(self, obs, au, n_hidden=64, reuse=False):
+    def __call__(self, ud, mask, au, n_hidden=64, reuse=False):
         with tf.variable_scope(self.name) as scope:
             if reuse:
                 scope.reuse_variables()
-            x = obs
+            x = ud
             x = tf.layers.dense(x, 64)
             if self.layer_norm:
                 x = tc.layers.layer_norm(x, center=True, scale=True)
@@ -101,17 +101,17 @@ class Dynamic_Actor(Model):
 
 class Dynamic_Critic(Model):
     def __init__(self, name='critic', layer_norm=True, time_step=5):
-        super(Critic, self).__init__(name=name)
+        super(Dynamic_Critic, self).__init__(name=name)
         self.layer_norm = layer_norm
         self.time_step = time_step
 
-    def __call__(self, obs, action, mask, au,  n_hidden=64, reuse=False, unit_data = False):
+    def __call__(self, ud, action, mask, au,  n_hidden=64, reuse=False, unit_data = False):
         with tf.variable_scope(self.name) as scope:
             if reuse:
                 scope.reuse_variables()
 
             # x [ batch_size*time_step, DATA_NUM]
-            x = obs
+            x = ud
             x = tf.layers.dense(x, 64)
             if self.layer_norm:
                 x = tc.layers.layer_norm(x, center=True, scale=True)

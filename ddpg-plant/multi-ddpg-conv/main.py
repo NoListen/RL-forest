@@ -33,7 +33,7 @@ def run(env_id, seed, noise_type, layer_norm, logdir, evaluation, nb_units, ip, 
         if not dynamic:
             env = sc.WarMapBattleEnv(ip, port, frame_skip = frame_skip)
         else:
-            env = dsc.Compound(ip, port, frame_skip = frame_skip, map_types_table=("unit_data",))
+            env = dsc.CompoundBattleEnv(ip, port, frame_skip = frame_skip, map_types_table=("unit_data",))
     else:
         env = gym.make(env_id)
 
@@ -99,7 +99,7 @@ def parse_args():
     parser.add_argument('--dynamic', default=True)
     parser.add_argument('--simple', default=True)
     parser.add_argument('--nb-units', type=int, default=5)
-    # boolean_flag(parser, 'render-eval', default=False)
+    boolean_flag(parser, 'render-eval', default=False)
     boolean_flag(parser, 'layer-norm', default=True)
     boolean_flag(parser, 'render', default=False)
     parser.add_argument('--seed', type=int, default=123457)

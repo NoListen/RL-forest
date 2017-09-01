@@ -136,7 +136,7 @@ class ObservationBuffer(object):
         return b
 
     def append(self, v):
-        assert(list(v.keys()) == self.k_set)
+        assert(set(list(v.keys())) == set(self.k_set))
         for k in self.k_set:
             self.d[k].append(v[k])
 

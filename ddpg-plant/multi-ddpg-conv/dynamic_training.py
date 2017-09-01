@@ -80,7 +80,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, ac
 
                     action, q, uq = agent.pi(obs, apply_noise=True, compute_Q=True)
                     assert action.shape == env.action_space.shape
-                    print(action)
+                    #print(action)
                     if render:
                         env.render()
                     assert max_action.shape == action.shape
