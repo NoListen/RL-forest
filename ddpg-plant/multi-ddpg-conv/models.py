@@ -73,6 +73,9 @@ class Dynamic_Actor(Model):
             if reuse:
                 scope.reuse_variables()
             x = ud
+            if self.layer_norm:
+                x = tc.layers.layer_norm(x, center=True, scale=True)
+
             x = tf.layers.dense(x, 64)
             if self.layer_norm:
                 x = tc.layers.layer_norm(x, center=True, scale=True)
@@ -89,9 +92,9 @@ class Dynamic_Actor(Model):
             x = tf.concat(x, 2)
 
             # TODO v2 turn on the batch_norm after lstm
-            # if self.layer_norm:
-            #     x = tc.layers.layer_norm(x, center=True, scale=True)
-            # x = tf.nn.relu(x)
+            if self.layer_norm:
+                x = tc.layers.layer_norm(x, center=True, scale=True)
+            x = tf.nn.relu(x)
 
             x = tf.reshape(x, [-1, self.time_step * n_hidden * 2, 1])
             x = tf.layers.conv1d(x, self.nb_unit_actions, kernel_size=n_hidden * 2, strides=n_hidden * 2,
@@ -112,6 +115,8 @@ class Dynamic_Critic(Model):
 
             # x [ batch_size*time_step, DATA_NUM]
             x = ud
+            if self.layer_norm:
+                x = tc.layers.layer_norm(x, center=True, scale=True)
             x = tf.layers.dense(x, 64)
             if self.layer_norm:
                 x = tc.layers.layer_norm(x, center=True, scale=True)
@@ -137,9 +142,9 @@ class Dynamic_Critic(Model):
                                                    sequence_length=au)
             x = tf.concat(x, 2)
             # TODO v2 turn on the batch_norm after lstm
-            # if self.layer_norm:
-            #     x = tc.layers.layer_norm(x, center=True, scale=True)
-            # x = tf.nn.relu(x)
+            if self.layer_norm:
+                x = tc.layers.layer_norm(x, center=True, scale=True)
+            x = tf.nn.relu(x)
 
             x = tf.reshape(x, [-1, self.time_step * n_hidden * 2, 1])
             # Q value of each

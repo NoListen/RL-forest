@@ -143,6 +143,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, ac
                            max_action * eval_action)  # scale for execution in env (as far as DDPG is concerned, every action is in [-1, 1])
                        eval_episode_reward += eval_r
                        eval_qs.append(eval_q)
+                       print(eval_uq)
                        print(eval_action)
                        if done:
                            if eval_episode_reward > 0:
