@@ -56,7 +56,7 @@ class Dynamic_DDPG(object):
 
         self.terminals1 = tf.placeholder(tf.float32, shape=(None, 1), name='terminals1')
 
-        self.rewards = tf.placeholder(tf.float32, shape=(None, 1), name='rewards')
+        self.rewards = tf.placeholder(tf.float32, shape=(None, )+reward_shape, name='rewards')
         self.actions = tf.placeholder(tf.float32, shape=(None,) + action_shape, name='actions')
 
         # critic_target is used to update the Q value of critic
