@@ -152,21 +152,11 @@ class Dynamic_Critic(Model):
                                  kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
             q = tf.squeeze(q, [-1])
 
-            # p = tf.layers.conv1d(x, 1, kernel_size=n_hidden*2, strides=n_hidden*2,
-            #                      kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
-            # p = tf.squeeze(p, [-1])
-            # if self.layer_norm:
-            #     p = tc.layers.layer_norm(p, center=True, scale=True)
-            # p = tf.nn.relu(p)
-            #
-            # p = tf.layers.dense(p, self.time_step, kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
-            # p = tf.nn.softmax(p)
-            Q_mask = tf.multiply(q, mask)
-            #print(mask.get_shape().as_list(), pQ_mask.get_shape().as_list(), "mask")
-            Q = tf.reduce_sum(Q_mask, axis=1, keep_dims=True)
+            # Q_mask = tf.multiply(q, mask)
+            Q = tf.reduce_sum(q, axis=1, keep_dims=True)
             #print(Q.get_shape().as_list, "Q")
         if unit_data:
-            return Q, Q_mask
+            return Q, q
         return Q
 
     @property

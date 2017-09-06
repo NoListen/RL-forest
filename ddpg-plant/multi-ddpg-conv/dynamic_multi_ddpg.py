@@ -42,7 +42,7 @@ def build_obs_placeholder(observation_shape, observation_dtype, name):
 class Dynamic_DDPG(object):
     def __init__(self, actor, critic, memory, observation_shape, observation_dtype, action_shape, action_noise=None,
                  gamma=0.99, tau=0.001, batch_size=128, action_range=(-1., 1.), critic_l2_reg=0,
-                 actor_lr=1e-4, critic_lr=1e-3, clip_norm=None, reward_scale=1., n_hidden=64):
+                 actor_lr=1e-4, critic_lr=1e-3, clip_norm=None, reward_scale=1., n_hidden=64, reward_shape):
         """n_hidden is for lstm unit"""
         assert memory.cls=="compound", "compound"
 
@@ -55,6 +55,7 @@ class Dynamic_DDPG(object):
         self.t = tf.placeholder(tf.float32, None, name="temperature")
 
         self.terminals1 = tf.placeholder(tf.float32, shape=(None, 1), name='terminals1')
+
         self.rewards = tf.placeholder(tf.float32, shape=(None, 1), name='rewards')
         self.actions = tf.placeholder(tf.float32, shape=(None,) + action_shape, name='actions')
 
@@ -77,7 +78,6 @@ class Dynamic_DDPG(object):
         self.batch_size = batch_size  # How to balance the data imbalance.
         self.stats_sample = None
         self.critic_l2_reg = critic_l2_reg  # regularization. I think the probable form is weight decay.
-
         target_actor = copy(actor)
         target_actor.name = 'target_actor' # build the network only when _call is invoked
         self.target_actor = target_actor
@@ -90,13 +90,14 @@ class Dynamic_DDPG(object):
         self.actor_tf = actor(n_hidden=n_hidden, **self.obs0)
         # change the __call__ parameters to be "map" rather than the "observation"
         # map the dictionary to those variables
-        self.critic_tf = critic(action=self.actions, n_hidden=n_hidden,**self.obs0)
-        self.critic_with_actor_tf, self.uq = critic(action=self.actor_tf, n_hidden=n_hidden, reuse=True, unit_data=True,
+        self.critic_tf, self.uq = critic(action=self.actions, n_hidden=n_hidden, unit_data=True, **self.obs0)
+        self.critic_with_actor_tf = critic(action=self.actor_tf, n_hidden=n_hidden, reuse=True,
                                              **self.obs0)
 
         # well, it's combined from several units.
-        Q_obs1 = target_critic(action=target_actor(n_hidden=n_hidden, **self.obs1), n_hidden=n_hidden, **self.obs1)
-        self.target_Q = self.rewards + (1. - self.terminals1) * gamma * Q_obs1
+        Q_obs1, uq_obs1 = target_critic(action=target_actor(n_hidden=n_hidden, **self.obs1), n_hidden=n_hidden, unit_data=True,
+                               **self.obs1)
+        self.target_uq = self.rewards + (1. - self.terminals1) * gamma * uq_obs1
 
         # Set up parts.
         self.setup_critic_optimizer()
@@ -122,17 +123,14 @@ class Dynamic_DDPG(object):
 
     def setup_actor_optimizer(self):
         print("setting up actor optimizer")
-        # because of reuse, no extra computation.
-        # gradient ascent. use Q's direction to update. Thus. the gradient need to be small.
         # Maybe I should use advantage function.
-        # How to update advantage function. ( update Q and V simultaneously )
         self.actor_loss = -tf.reduce_mean(self.critic_with_actor_tf)
         actor_shapes = [var.get_shape().as_list() for var in self.actor.trainable_vars]
         print('  actor shapes: {}'.format(actor_shapes))
         with tf.variable_scope('actor_optimizer'):
-            #self.actor_optimizer = tf.train.AdamOptimizer(learning_rate=self.actor_lr,
-            #                                          beta1=0.9, beta2=0.999,epsilon=1e-8)
-            self.actor_optimizer = tf.train.RMSPropOptimizer(self.actor_lr, momentum=0.95, epsilon=0.01)
+            self.actor_optimizer = tf.train.AdamOptimizer(learning_rate=self.actor_lr,
+                                                     beta1=0.9, beta2=0.999,epsilon=1e-8)
+            # self.actor_optimizer = tf.train.RMSPropOptimizer(self.actor_lr, momentum=0.95, epsilon=0.01)
             # if apply gradients to specific variables, it will also update the critic network.
             actor_grads = tf.gradients(self.actor_loss, self.actor.trainable_vars)
             if self.clip_norm:
@@ -149,7 +147,7 @@ class Dynamic_DDPG(object):
         # Most cases ( train ), off policy
         #self.critic_loss = tf.reduce_mean(tf.multiply(tf.reduce_sum(self.mask, axis=1, keep_dims=True),tf.square(self.critic_tf - self.critic_target))+\
         #    tf.reduce_sum(tf.square(self.critic_qm),axis=1, keep_dims=True))
-        loss1 = tf.square(self.critic_tf - self.critic_target)
+        loss1 = tf.reduce_sum(tf.square(self.uq - self.target_uq), axis=1, keep_dimes = True)
         # loss2 = tf.reduce_mean(tf.square(self.critic_qm),axis=1, keep_dims=True)
         self.critic_loss = tf.reduce_mean(loss1)
 
@@ -168,9 +166,9 @@ class Dynamic_DDPG(object):
         print('  critic shapes: {}'.format(critic_shapes))
         with tf.variable_scope('critic_optimizer'):
             # Adam may be better. RMSProp can result in Q value explosion.
-            self.critic_optimizer = tf.train.RMSPropOptimizer(self.critic_lr, momentum=0.95, epsilon=0.01)
-            #self.critic_optimizer = tf.train.AdamOptimizer(learning_rate=self.critic_lr,
-            #                                           beta1=0.9, beta2=0.999, epsilon=1e-8)
+            # self.critic_optimizer = tf.train.RMSPropOptimizer(self.critic_lr, momentum=0.95, epsilon=0.01)
+            self.critic_optimizer = tf.train.AdamOptimizer(learning_rate=self.critic_lr,
+                                                      beta1=0.9, beta2=0.999, epsilon=1e-8)
             critic_grads = tf.gradients(self.critic_loss, self.critic.trainable_vars)
             if self.clip_norm:
                 self.critic_grads,_ = tf.clip_by_global_norm(critic_grads, self.clip_norm)

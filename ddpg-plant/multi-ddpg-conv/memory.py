@@ -148,7 +148,7 @@ class ObservationBuffer(object):
 # similar to memory actually
 # obs is a dictionary stored in Observation Buffer
 class CompoundMemory(object):
-    def __init__(self, limit, action_shape, observation_shape, observation_dtype):
+    def __init__(self, limit, action_shape, observation_shape, observation_dtype, reward_shape=(1,)):
         self.limit = limit
 
         assert(isinstance(observation_shape, dict))
@@ -156,7 +156,7 @@ class CompoundMemory(object):
         self.observations0 = ObservationBuffer(limit, observation_shape, observation_dtype)
         self.observations1 = ObservationBuffer(limit, observation_shape, observation_dtype)
         self.actions = RingBuffer(limit, shape=action_shape)
-        self.rewards = RingBuffer(limit, shape=(1,))
+        self.rewards = RingBuffer(limit, shape=reward_shape)
         # can be changed to boolean
         self.cls = "compound"
         self.terminals1 = RingBuffer(limit, shape=(1,))

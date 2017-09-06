@@ -62,6 +62,7 @@ def run(env_id, seed, noise_type, layer_norm, logdir, evaluation, nb_units, ip, 
         critic = Conv_Critic(layer_norm=layer_norm, time_step=nb_units)
         actor = Conv_Actor(nb_unit_actions, layer_norm=layer_norm, time_step=nb_units)
     else:
+        reward_shape = env.reward_shape
         if simple:
             actor = Dynamic_Actor(nb_unit_actions, layer_norm=layer_norm, time_step=nb_units)
             critic = Dynamic_Critic(layer_norm=layer_norm, time_step=nb_units)
@@ -69,7 +70,7 @@ def run(env_id, seed, noise_type, layer_norm, logdir, evaluation, nb_units, ip, 
             critic = Dynamic_Conv_Critic(layer_norm=layer_norm, time_step=nb_units)
             actor = Dynamic_Conv_Actor(nb_unit_actions, layer_norm=layer_norm, time_step=nb_units)
         memory = CompoundMemory(limit=int(1e6), action_shape=env.action_space.shape, observation_shape=env.observation_shape,
-            observation_dtype=env.observation_dtype)
+            observation_dtype=env.observation_dtype, reward_shape=reward_shape)
 
     # Seed everything to make things reproducible.
 
