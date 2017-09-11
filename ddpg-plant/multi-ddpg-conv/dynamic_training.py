@@ -16,7 +16,7 @@ import tensorflow as tf
 def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, actor, critic,
           critic_l2_reg, actor_lr, critic_lr, action_noise, logdir,
           gamma, clip_norm, nb_train_steps, nb_eval_cycles, batch_size, memory, evaluation,
-          tau=0.01, eval_env=None, save_epoch_interval=None):
+          tau=0.01, eval_env=None, save_epoch_interval=None, reward_shape=(1,)):
 
     # indeed [-1. 1]
     assert (np.abs(env.action_space.low) == env.action_space.high).all()  # we assume symmetric actions.
@@ -28,7 +28,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, ac
     agent = Dynamic_DDPG(actor, critic, memory, env.observation_shape, env.observation_dtype,
                  env.action_space.shape, gamma=gamma, tau=tau, batch_size=batch_size, action_noise=action_noise,
                  critic_l2_reg=critic_l2_reg, actor_lr=actor_lr, critic_lr=critic_lr, clip_norm=clip_norm,
-                 reward_scale=reward_scale)
+                 reward_scale=reward_scale, reward_shape=reward_shape)
     print('Using agent with the following configuration:')
     print(str(agent.__dict__.items()))
 
@@ -77,7 +77,6 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, ac
                 while not done:
                     # Predict next action.
                     # TODO the call function has been changed in the model file, so we need to change the ddpg file.
-
                     action, q, uq = agent.pi(obs, apply_noise=True, compute_Q=True)
                     assert action.shape == env.action_space.shape
                     #print(action)
@@ -89,10 +88,9 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, ac
                     t += 1
                     if render:
                         env.render()
-
-                    episode_reward += r
+                    #print(r," reward")
+                    episode_reward += np.sum(r)
                     episode_step += 1
-                    r = max(min(r, 1), -1)
                     # Book-keeping.
                     epoch_actions.append(action)
                     epoch_qs.append(q)
@@ -141,12 +139,12 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, ac
                        eval_action, eval_q, eval_uq = agent.pi(obs, apply_noise=False, compute_Q=True)
                        obs, eval_r, done, eval_info = env.step(
                            max_action * eval_action)  # scale for execution in env (as far as DDPG is concerned, every action is in [-1, 1])
-                       eval_episode_reward += eval_r
+                       eval_episode_reward += np.sum(eval_r)
                        eval_qs.append(eval_q)
                        print(eval_uq)
                        print(eval_action)
                        if done:
-                           if eval_episode_reward > 0:
+                           if env._check_win():#eval_episode_reward > 0:
                                eval_wins += 1
                            obs = env.reset()
                            eval_episode_rewards.append(eval_episode_reward)

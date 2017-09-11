@@ -42,7 +42,7 @@ def build_obs_placeholder(observation_shape, observation_dtype, name):
 class Dynamic_DDPG(object):
     def __init__(self, actor, critic, memory, observation_shape, observation_dtype, action_shape, action_noise=None,
                  gamma=0.99, tau=0.001, batch_size=128, action_range=(-1., 1.), critic_l2_reg=0,
-                 actor_lr=1e-4, critic_lr=1e-3, clip_norm=None, reward_scale=1., n_hidden=64, reward_shape):
+                 actor_lr=1e-4, critic_lr=1e-3, clip_norm=None, reward_scale=1., n_hidden=64, reward_shape=(1,)):
         """n_hidden is for lstm unit"""
         assert memory.cls=="compound", "compound"
 
@@ -60,7 +60,7 @@ class Dynamic_DDPG(object):
         self.actions = tf.placeholder(tf.float32, shape=(None,) + action_shape, name='actions')
 
         # critic_target is used to update the Q value of critic
-        self.critic_target = tf.placeholder(tf.float32, shape=(None, 1), name='critic_target')
+        self.critic_target = tf.placeholder(tf.float32, shape=(None,)+reward_shape, name='critic_target')
 
         # Parameters.
         self.gamma = gamma # discount factor.
@@ -88,10 +88,11 @@ class Dynamic_DDPG(object):
         # Create networks and core TF parts that are shared across setup parts.
         # When the network is too wide or deep, it tends to be overfitting.
         self.actor_tf = actor(n_hidden=n_hidden, **self.obs0)
+        print(self.actor_tf.get_shape().as_list(),"EMMMMMMMMMMMMMMMMMMMM SHAPE HERE")
         # change the __call__ parameters to be "map" rather than the "observation"
         # map the dictionary to those variables
         self.critic_tf, self.uq = critic(action=self.actions, n_hidden=n_hidden, unit_data=True, **self.obs0)
-        self.critic_with_actor_tf = critic(action=self.actor_tf, n_hidden=n_hidden, reuse=True,
+        self.critic_with_actor_tf, self.uq_with_actor = critic(action=self.actor_tf, n_hidden=n_hidden, reuse=True, unit_data=True,
                                              **self.obs0)
 
         # well, it's combined from several units.
@@ -147,7 +148,7 @@ class Dynamic_DDPG(object):
         # Most cases ( train ), off policy
         #self.critic_loss = tf.reduce_mean(tf.multiply(tf.reduce_sum(self.mask, axis=1, keep_dims=True),tf.square(self.critic_tf - self.critic_target))+\
         #    tf.reduce_sum(tf.square(self.critic_qm),axis=1, keep_dims=True))
-        loss1 = tf.reduce_sum(tf.square(self.uq - self.target_uq), axis=1, keep_dimes = True)
+        loss1 = tf.reduce_sum(tf.square(self.uq - self.critic_target), axis=1, keep_dims = True)
         # loss2 = tf.reduce_mean(tf.square(self.critic_qm),axis=1, keep_dims=True)
         self.critic_loss = tf.reduce_mean(loss1)
 
@@ -219,7 +220,7 @@ class Dynamic_DDPG(object):
         # add [] to expand the dim
         feed_dict = {self.obs0[k]: [obs[k]] for k in obs.keys()}
         if compute_Q:
-            action, q, uq = self.sess.run([actor_tf, self.critic_with_actor_tf, self.uq], feed_dict=feed_dict)
+            action, q, uq = self.sess.run([actor_tf, self.critic_with_actor_tf, self.uq_with_actor], feed_dict=feed_dict)
         else:
             action = self.sess.run(actor_tf, feed_dict=feed_dict)
             q = None
@@ -253,7 +254,7 @@ class Dynamic_DDPG(object):
             self.rewards: batch["rewards"],
             self.terminals1: batch["terminals1"].astype('float32')
         })
-        target_Q = self.sess.run(self.target_Q, feed_dict=target_feed_dict)
+        target_uq = self.sess.run(self.target_uq, feed_dict=target_feed_dict)
 
         # Get all gradients and perform a synced update.
         ops = [self.actor_train_op, self.actor_loss, self.critic_train_op, self.critic_loss]
@@ -261,7 +262,7 @@ class Dynamic_DDPG(object):
         feed_dict = {self.obs0[k]: batch["obs0"][k] for k in self.obs0.keys()}
         feed_dict.update({
             self.actions: batch["actions"],
-            self.critic_target: target_Q
+            self.critic_target: target_uq
         })
 
         _, actor_loss, _, critic_loss = self.sess.run(ops, feed_dict=feed_dict)
