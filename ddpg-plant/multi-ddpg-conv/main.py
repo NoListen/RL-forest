@@ -7,7 +7,7 @@ import os
 from tempfile import mkdtemp
 import sys
 import json
-import gym_starcraft.envs.war_map_battle_env as sc
+# import gym_starcraft.envs.war_map_battle_env as sc
 # import gym_starcraft.envs.dynamic_battle_env as dsc
 import gym_starcraft.envs.compound_battle_env as dsc
 
@@ -30,10 +30,10 @@ def run(env_id, seed, noise_type, layer_norm, logdir, evaluation, nb_units, ip, 
     print("Well I am going to print the ip", ip)
     # remove evaluation environment.
     if env_id == "StarCraft":
-        if not dynamic:
-            env = sc.WarMapBattleEnv(ip, port, frame_skip = frame_skip)
-        else:
-            env = dsc.CompoundBattleEnv(ip, port, frame_skip = frame_skip, map_types_table=("unit_data",))
+        #if not dynamic:
+        #    env = sc.WarMapBattleEnv(ip, port, frame_skip = frame_skip)
+        #else:
+        env = dsc.CompoundBattleEnv(ip, port, frame_skip = frame_skip, map_types_table=("unit_data",))
     else:
         env = gym.make(env_id)
 
