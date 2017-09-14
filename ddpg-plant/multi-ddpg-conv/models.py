@@ -152,7 +152,7 @@ class Dynamic_Critic(Model):
                                  kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
             q = tf.squeeze(q, [-1])
 
-            q = tf.multiply(q, mask)
+            #q = tf.multiply(q, mask)
             Q = tf.reduce_sum(q, axis=1, keep_dims=True)
             #print(Q.get_shape().as_list, "Q")
         if unit_data:

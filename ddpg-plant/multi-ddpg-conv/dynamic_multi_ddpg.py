@@ -88,7 +88,7 @@ class Dynamic_DDPG(object):
         # Create networks and core TF parts that are shared across setup parts.
         # When the network is too wide or deep, it tends to be overfitting.
         self.actor_tf = actor(n_hidden=n_hidden, **self.obs0)
-        print(self.actor_tf.get_shape().as_list(),"EMMMMMMMMMMMMMMMMMMMM SHAPE HERE")
+        print(self.actor_tf.name,"EMMMMMMMMMMMMMMMMMMMM SHAPE HERE")
         # change the __call__ parameters to be "map" rather than the "observation"
         # map the dictionary to those variables
         self.critic_tf, self.uq = critic(action=self.actions, n_hidden=n_hidden, unit_data=True, **self.obs0)

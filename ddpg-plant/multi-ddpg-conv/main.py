@@ -118,7 +118,7 @@ def parse_args():
     parser.add_argument('--frame-skip', type=int, default=2)
     # parser.add_argument('--nb-rollout-steps', type=int, default=300)  # per epoch cycle and MPI worker
     parser.add_argument('--noise-type', type=str,
-                        default='ou_1')  # choices are adaptive-param_xx, ou_xx, normal_xx, none
+                        default='ou_0.1')  # choices are adaptive-param_xx, ou_xx, normal_xx, none
     parser.add_argument('--logdir', type=str, default='checkpoints')
     boolean_flag(parser, 'evaluation', default=True)
 

@@ -80,7 +80,7 @@ class DDPG(object):
         # When the network is too wide or deep, it tends to be overfitting.
         print("I am building the actor")
         self.actor_tf = actor(self.obs0, self.ul0, n_hidden)
-        print("actor finished")
+        print("#######actor finished########", self.actor_tf.name)
         self.critic_tf, self.critic_qm = critic(self.obs0, self.ul0, self.actions, self.mask0, self.t, n_hidden, mask_loss=True)
         self.critic_with_actor_tf, self.uq = critic(self.obs0, self.ul0, self.actor_tf, self.mask0, self.t, n_hidden, reuse=True, unit_data=True)
 
