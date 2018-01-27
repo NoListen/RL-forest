@@ -2,9 +2,9 @@
 
 This is a implementation of [BiCNet](https://arxiv.org/pdf/1703.10069.pdf).
 
-Dynamic Actor means that applying the dynamic RNN to ignore the dead units.
+`Dynamic` means that applying the dynamic RNN to ignore the dead units.
 
-By setting au(alive units) to the numebr of all soldiers in self-camp, dynamci RNN can perform like static RNN.
+By setting `au`(alive units) to the numebr of all soldiers in self-camp, dynamci RNN can perform like static RNN.
 
 # Environment
 
