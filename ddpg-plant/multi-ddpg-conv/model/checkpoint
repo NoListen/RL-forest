@@ -1,5 +1,0 @@
-model_checkpoint_path: "epoch_15_winrate_0.00-86243"
-all_model_checkpoint_paths: "epoch_0_winrate_0.10-6067"
-all_model_checkpoint_paths: "epoch_5_winrate_0.00-32019"
-all_model_checkpoint_paths: "epoch_10_winrate_0.90-58301"
-all_model_checkpoint_paths: "epoch_15_winrate_0.00-86243"
