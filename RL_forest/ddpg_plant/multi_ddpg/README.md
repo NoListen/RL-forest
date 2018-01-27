@@ -1,6 +1,6 @@
 # BiCNet
 
-This is a implementation of [BiCNet](https://arxiv.org/pdf/1703.10069.pdf).
+This is a implementation of [BiCNet](https://arxiv.org/pdf/1703.10069.pdf). You can watch some results in this [video](https://youtu.be/b-xAqJIfsBw).
 
 `Dynamic` means that applying the dynamic RNN to ignore the dead units.
 
