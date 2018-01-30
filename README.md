@@ -12,7 +12,7 @@ pip install -e .
 
 # Plants
 
-- DDPG (DDPG/BiCNet)
+- DDPG (DDPG/[BiCNet](https://arxiv.org/abs/1703.10069))
 
 # TODO Next
 
