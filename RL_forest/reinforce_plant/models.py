@@ -3,6 +3,19 @@ import tensorflow as tf
 
 # network does no relationship with choosing action policy
 
+"""
+input:
+* for all
+- obs:          observation placeholder
+* for train
+- action:       action chosen
+- r:            MonteCarlo Return
+
+output:
+- p:            policy to take
+- policy_loss:  policy gradient loss
+          
+"""
 class MlpNetwork(object):
     def __init__(self, name, *args, **kargs):
         with tf.variable_scope(name):
@@ -11,9 +24,9 @@ class MlpNetwork(object):
             self.cls = 'mlp'
 
     def _init(self, input_size, output_size, hid_size, num_hid_layers):
-        self.obs = tf.placeholder(tf.float32, shape=(None, input_size), name='obs')
+        self.ob = tf.placeholder(tf.float32, shape=(None, input_size), name='obs')
 
-        last_out = self.obs
+        last_out = self.ob
         for i in range(num_hid_layers):
             last_out = tf.nn.relu(tf.layers.dense(last_out, hid_size))
 
@@ -31,7 +44,8 @@ class MlpNetwork(object):
         # log is the key idea in policy graident
         logpa = tf.log(tf.clip(pa, 1e-20, 1.0)) # avoid extreme situation
 
-        self.policy_loss = tf.reduce_sum(self.r * logpa)
+        # maximize r*logpa
+        self.policy_loss = -tf.reduce_sum(self.r * logpa)
 
         # TODO add entropy
         # igore entropy temporally.

@@ -43,16 +43,18 @@ def discount(x, gamma):
 # Maybe train batch by batch may work
 # obs_processor: ObsProcessor
 # TODO multi-threading data genration
-def traj_segment_generator(pi, env, obs_processor):
+def traj_segment_generator(pi, env, obs_processor, stochastic=True):
     ob = env.reset()
 
     obs = []
     actions = []
     rews = []
 
+    ep_ret = 0
+    ep_steps = 0
     while True:
         ob = obs_processor(ob)
-        action = pi.action(ob)
+        action = pi.action(ob, stochastic)
         obs.append(ob)
         actions.append(action)
 
@@ -60,10 +62,15 @@ def traj_segment_generator(pi, env, obs_processor):
 
         rews.append(rew)
 
+        ep_ret += rew
+        ep_steps += 1
+
         if done:
             yield {"ob": np.array(obs), "action": np.array(actions),
-            "rew": np.array(rews)}
+            "rew": np.array(rews), 'ep_ret': ep_ret, 'ep_steps': ep_steps}
             obs = []
             actions = []
             rews = []
+            ep_ret = 0
+            ep_steps = 0
             ob = env.reset()
