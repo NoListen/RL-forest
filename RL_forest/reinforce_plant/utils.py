@@ -1,19 +1,34 @@
 from skimage.transform import resize
 import numpy as np
 import scipy.signal
+import random
 
+# TODO support IMg with RGB channels
 # only support 2D's operation.
 class ObsProcessor(object):
-    def __init__(self, crop_area = None, resize_shape = None, flatten=True):
+    def __init__(self, obs_shape, crop_area = None, resize_shape = None, flatten=True):
         self.crop_area = crop_area #(x1, y1, x2, y2)
         self.resize_shape = resize_shape
         self.flatten = flatten
+
+        # calculate the output shape
+        if resize_shape:
+            shape = resize_shape
+        elif crop_area:
+            shape = (crop_area[3]-crop_area[1], crop_area[2]-crop_area[0])
+        else:
+            shape = obs_shape
+
+        if flatten:
+            self.out_shape = shape.reshape(-1)
+        else:
+            self.out_shape = shape
 
     # (y, x)
     def process(self, obs):
         if self.crop_area:
             obs = obs[self.crop_area[1]:self.crop_area[3], self.crop_area[0]:self.crop_area[2]]
-        if self.flatten:
+        if self.resize_shape:
             obs = resize(obs, self.resize_shape)
         if self.flatten:
             obs = obs.astype(np.float).ravel()
@@ -74,3 +89,13 @@ def traj_segment_generator(pi, env, obs_processor, stochastic=True):
             ep_ret = 0
             ep_steps = 0
             ob = env.reset()
+
+def set_global_seeds(i):
+    try:
+        import tensorflow as tf
+    except ImportError:
+        pass
+    else:
+        tf.set_random_seed(i)
+    np.random.seed(i)
+    random.seed(i)

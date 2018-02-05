@@ -23,8 +23,8 @@ class MlpNetwork(object):
             self.scope = tf.get_variable_scope().name
             self.cls = 'mlp'
 
-    def _init(self, input_size, output_size, hid_size, num_hid_layers):
-        self.ob = tf.placeholder(tf.float32, shape=(None, input_size), name='obs')
+    def _init(self, input_size, num_output, hid_size, num_hid_layers):
+        self.ob = tf.placeholder(tf.float32, shape=(None,) + input_size, name='obs')
 
         last_out = self.ob
         for i in range(num_hid_layers):
@@ -39,7 +39,7 @@ class MlpNetwork(object):
         # use Monte-Carlo Return at first.
         self.r = tf.placeholder(tf.float32, shape=(None,), name="return")
 
-        onehot_action = tf.one_hot(self.action, output_size, 1.0, 0.0, name="action_one_hot") # output_size = num_actions
+        onehot_action = tf.one_hot(self.action, num_output, 1.0, 0.0, name="action_one_hot") # output_size = num_actions
         pa = tf.reduce_sum(tf.multiply(self.p * onehot_action), axis=1)
         # log is the key idea in policy graident
         logpa = tf.log(tf.clip(pa, 1e-20, 1.0)) # avoid extreme situation

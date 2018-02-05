@@ -4,9 +4,9 @@ from utils import traj_segment_generator, discount
 from collections import deque
 import numpy as np
 
-def refinforce(env, sess, lr, gamma, action_dict, **kargs):
+def refinforce(env, sess, obs_processor, lr, gamma, action_dict, **kargs):
     pi = Agent(sess, lr, action_dict, **kargs)
-    ep_gen = traj_segment_generator(pi, env, stochastic=True)
+    ep_gen = traj_segment_generator(pi, env, obs_processor, stochastic=True)
 
     ep_rets = deque(maxlen=100)
     ep_steps = deque(maxlen=100)
