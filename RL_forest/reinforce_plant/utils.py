@@ -2,6 +2,7 @@ from skimage.transform import resize
 import numpy as np
 import scipy.signal
 import random
+from scipy.misc import imsave
 
 # TODO support IMg with RGB channels
 # only support 2D's operation.
@@ -11,7 +12,8 @@ class ObsProcessor(object):
         self.resize_shape = resize_shape
         self.flatten = flatten
 
-        # calculate the output shape
+        # resize rescales 0-255 to 0-1
+        # if you don't want to rescale, use cv2.resize(img, shape, inter_nearest)
         if resize_shape:
             shape = resize_shape
         elif crop_area:
@@ -20,7 +22,7 @@ class ObsProcessor(object):
             shape = obs_shape
 
         if flatten:
-            self.out_shape = shape.reshape(-1)
+            self.out_shape = (np.prod(shape), )
         else:
             self.out_shape = shape
 
@@ -29,7 +31,8 @@ class ObsProcessor(object):
         if self.crop_area:
             obs = obs[self.crop_area[1]:self.crop_area[3], self.crop_area[0]:self.crop_area[2]]
         if self.resize_shape:
-            obs = resize(obs, self.resize_shape)
+            obs = resize(obs, self.resize_shape, order=1) # no interpolation. Can change this.
+            imsave("test.png", obs)
         if self.flatten:
             obs = obs.astype(np.float).ravel()
         return obs
@@ -68,16 +71,17 @@ def traj_segment_generator(pi, env, obs_processor, stochastic=True):
     ep_ret = 0
     ep_steps = 0
     while True:
-        ob = obs_processor(ob)
+        ob = obs_processor.process(ob)
         action = pi.action(ob, stochastic)
         obs.append(ob)
         actions.append(action)
 
-        ob, rew, done = env.step(action)
+        ob, rew, done,  _ = env.step([action, None])
 
-        rews.append(rew)
+        # pong env support two players.
+        rews.append(rew[0])
 
-        ep_ret += rew
+        ep_ret += rew[0]
         ep_steps += 1
 
         if done:

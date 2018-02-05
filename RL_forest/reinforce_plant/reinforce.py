@@ -3,9 +3,11 @@ from agent import Agent
 from utils import traj_segment_generator, discount
 from collections import deque
 import numpy as np
+import tensorflow as tf
 
-def refinforce(env, sess, obs_processor, lr, gamma, action_dict, **kargs):
+def reinforce(env, sess, obs_processor, lr, gamma, action_dict, **kargs):
     pi = Agent(sess, lr, action_dict, **kargs)
+    sess.run(tf.global_variables_initializer())
     ep_gen = traj_segment_generator(pi, env, obs_processor, stochastic=True)
 
     ep_rets = deque(maxlen=100)

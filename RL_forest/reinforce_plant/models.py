@@ -30,7 +30,7 @@ class MlpNetwork(object):
         for i in range(num_hid_layers):
             last_out = tf.nn.relu(tf.layers.dense(last_out, hid_size))
 
-        last_out = tf.layers.dense(last_out, output_size)
+        last_out = tf.layers.dense(last_out, num_output)
         # probabilities of all actions
         self.p = tf.nn.softmax(last_out)
 
@@ -40,9 +40,9 @@ class MlpNetwork(object):
         self.r = tf.placeholder(tf.float32, shape=(None,), name="return")
 
         onehot_action = tf.one_hot(self.action, num_output, 1.0, 0.0, name="action_one_hot") # output_size = num_actions
-        pa = tf.reduce_sum(tf.multiply(self.p * onehot_action), axis=1)
+        pa = tf.reduce_sum(tf.multiply(self.p, onehot_action), axis=1)
         # log is the key idea in policy graident
-        logpa = tf.log(tf.clip(pa, 1e-20, 1.0)) # avoid extreme situation
+        logpa = tf.log(tf.clip_by_value(pa, 1e-20, 1.0)) # avoid extreme situation
 
         # maximize r*logpa
         self.policy_loss = -tf.reduce_sum(self.r * logpa)
