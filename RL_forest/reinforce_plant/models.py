@@ -8,6 +8,7 @@ class MlpNetwork(object):
         with tf.variable_scope(name):
             self._init(*args, **kargs)
             self.scope = tf.get_variable_scope().name
+            self.cls = 'mlp'
 
     def _init(self, input_size, output_size, hid_size, num_hid_layers):
         self.obs = tf.placeholder(tf.float32, shape=(None, input_size), name='obs')
