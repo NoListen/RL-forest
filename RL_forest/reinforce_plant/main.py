@@ -10,7 +10,7 @@ import json
 # def train(env_id, seed, action_mapping, **kargs):
 def train(seed,  **kargs):
     set_global_seeds(seed)
-    env = PongGame(frame_skip=4)
+    env = PongGame(frame_skip=1)
 
     sess = tf.Session()
 
@@ -37,6 +37,8 @@ def main():
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--num-hid-layers', type=int, default=1)
     parser.add_argument('--hid-size', type=int, default=200)
+    parser.add_argument('--lam', type=float, default=0.95)
+    parser.add_argument('--horizon', type=int, default=64)
     # parser.add_argument("--action-mapping", action="store_true", default=False)
     args = vars(parser.parse_args())
     with open('args.json', 'w') as f:

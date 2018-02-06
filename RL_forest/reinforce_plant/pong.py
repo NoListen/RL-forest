@@ -114,13 +114,12 @@ def updateBall(paddle1YPos, paddle2YPos, ballXPos, ballYPos, ballXDirection, bal
         if random.randint(0, 1) == 0:
             ballAngle = -ballAngle
 
-        return [score1, score2, paddle1YPos, paddle2YPos, ballXPos, ballYPos, ballXDirection, ballAngle]
+        return [score1, score2, ballXPos, ballYPos, ballXDirection, ballAngle]
 
     # RIGHT SIDE
     # check for a collision with paddle2
 
-    if (
-                    ballXPos + BALL_WIDTH >= WINDOW_WIDTH - PADDLE_WIDTH - PADDLE_BUFFER and ballYPos + BALL_HEIGHT >= paddle2YPos and
+    if (ballXPos + BALL_WIDTH >= WINDOW_WIDTH - PADDLE_WIDTH - PADDLE_BUFFER and ballYPos + BALL_HEIGHT >= paddle2YPos and
             ballYPos <= paddle2YPos + PADDLE_HEIGHT):
 
         # switch direction of the ball
@@ -158,7 +157,7 @@ def updateBall(paddle1YPos, paddle2YPos, ballXPos, ballYPos, ballXDirection, bal
         if random.randint(0, 1) == 0:
             ballAngle = -ballAngle
 
-        return [score1, score2, paddle1YPos, paddle2YPos, ballXPos, ballYPos, ballXDirection, ballAngle]
+        return [score1, score2, ballXPos, ballYPos, ballXDirection, ballAngle]
 
     # TOP AND BOTTOM
     # if it hits the top - move down
@@ -171,7 +170,7 @@ def updateBall(paddle1YPos, paddle2YPos, ballXPos, ballYPos, ballXDirection, bal
         ballYPos = WINDOW_HEIGHT - BALL_HEIGHT
         ballAngle *= -1
 
-    return [score1, score2, paddle1YPos, paddle2YPos, ballXPos, ballYPos, ballXDirection, ballAngle]
+    return [score1, score2, ballXPos, ballYPos, ballXDirection, ballAngle]
 
 
 def drawScore(score1, score2):
@@ -180,8 +179,8 @@ def drawScore(score1, score2):
     font = pygame.font.Font(None, 32)
     scorelbl_1 = font.render(str(score1), 1, WHITE)
     scorelbl_2 = font.render(str(score2), 1, WHITE)
-    screen.blit(scorelbl_1, (100 - font.size(str(score1))[0] / 2, 20))
-    screen.blit(scorelbl_2, (300 - font.size(str(score2))[0] / 2, 20))
+    screen.blit(scorelbl_1, (WINDOW_WIDTH/4 - font.size(str(score1))[0] / 2, 20))
+    screen.blit(scorelbl_2, (WINDOW_WIDTH/4*3 - font.size(str(score2))[0] / 2, 20))
 
 
 # include the data processing in the enviroment
@@ -216,10 +215,10 @@ class PongGame:
     def updatePaddle(self, paddleYPos, action=None):
         # auto control.
         if action is not None:
-            if action == 1:
+            if action == 0:
                 paddleYPos = paddleYPos - PADDLE_SPEED
             # if move down
-            if action == 2:
+            if action == 1:
                 paddleYPos = paddleYPos + PADDLE_SPEED
         else:
             if (paddleYPos + PADDLE_HEIGHT / 2 < self.ballYPos + BALL_HEIGHT / 2):
@@ -232,6 +231,12 @@ class PongGame:
         paddleYPos = max(0, paddleYPos)
         paddleYPos = min(paddleYPos, WINDOW_HEIGHT - PADDLE_HEIGHT)
         return paddleYPos
+
+    def updateBall(self):
+        [score1, score2, self.ballXPos, self.ballYPos, self.ballXDirection,
+         self.ballAngle] = updateBall(self.paddle1YPos, self.paddle2YPos, self.ballXPos, self.ballYPos,
+                                      self.ballXDirection, self.ballAngle)
+        return (score1, score2)
 
     def reset(self):
         self.tally1 = 0
@@ -259,16 +264,15 @@ class PongGame:
     def step(self, action):
         pygame.event.pump()
         screen.fill(BLACK)
-
+        score1 = score2 = 0
         for i in range(self.frame_skip + 1):
             self.paddle1YPos = self.updatePaddle(self.paddle1YPos, action[0])
             self.paddle2YPos = self.updatePaddle(self.paddle2YPos, action[1])
+            scores = self.updateBall()
+            score1 += scores[0]
+            score2 += scores[1]
         drawPaddle2(self.paddle2YPos)
         drawPaddle1(self.paddle1YPos)
-        # update ball position and score stats, draw ball and score
-        [score1, score2, self.paddle1YPos, self.paddle2YPos, self.ballXPos, self.ballYPos, self.ballXDirection,
-         self.ballAngle] = updateBall(self.paddle1YPos, self.paddle2YPos, self.ballXPos, self.ballYPos,
-                                      self.ballXDirection, self.ballAngle)
         drawBall(self.ballXPos, self.ballYPos)
 
         self.tally1 = self.tally1 + score1

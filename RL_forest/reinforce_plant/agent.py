@@ -24,9 +24,10 @@ class Agent(object):
     def action(self, ob, stochastic=True):
         # obs is only one state by default
         feed_dict = {self.net.ob: ob[None]}
-        prob = self.sess.run(self.net.p, feed_dict=feed_dict)
+        prob, value = self.sess.run([self.net.p, self.net.v], feed_dict=feed_dict)
         # the batch_size is one
         prob = prob[0]
+        value = value[0]
 
         if not stochastic:
             action = np.argmax(prob, -1)
@@ -35,13 +36,20 @@ class Agent(object):
 
         if self.action_dict:
             action = self.action_dict[action]
-        return action
+        return action, value
+
+    def evaluate(self, ob):
+        feed_dict = {self.net.ob: ob[None]}
+        value = self.sess.run(self.net.v, feed_dict=feed_dict)
+        value = value[0]
+        return value
 
     # ep should have 1. ob 2. ret(discounted return) 3. action
-    def train(self, ep):
-        feed_dict = {self.net.ob: ep["ob"],
-                     self.net.r: ep["ret"],
-                     self.net.action:ep["action"]}
+    def train(self, seg):
+        feed_dict = {self.net.ob: seg["ob"],
+                     self.net.r: seg["tdlamret"],
+                     self.net.action:seg["ac"],
+                     self.net.td: seg["adv"]}
 
         self.sess.run(self.opt, feed_dict=feed_dict)
 
