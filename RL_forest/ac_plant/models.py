@@ -33,20 +33,25 @@ class MlpNetwork(object):
         # probabilities of all actions
         self.p = tf.nn.softmax(tf.layers.dense(last_out, num_output))
 
-        # the value function
+        # Critic architecture
         self.v = tf.layers.dense(last_out, 1)
 
         self.action = tf.placeholder(tf.int32, shape=(None,), name="action")
-        # use Monte-Carlo Return at first.
+        # Monte-Carlo Return
         self.r = tf.placeholder(tf.float32, shape=(None,), name="return")
+        # TD-1 or GAE
+        self.td = tf.placeholder(tf.float32, shape=(None,), name="td")
 
         onehot_action = tf.one_hot(self.action, num_output, 1.0, 0.0, name="action_one_hot") # output_size = num_actions
-        # log is the key idea in policy graident
         logp = tf.log(tf.clip_by_value(self.p, 1e-20, 1.0)) # avoid extreme situation
-        entropy = -tf.reduce_sum(self.p * logp, axis=1)
+        logpa = tf.reduce_sum(tf.multiply(logp, onehot_action), axis=1)
 
-        logpa = tf.reduce_sum(logp*onehot_action, axis=1)
-        self.policy_loss = -tf.reduce_sum(self.r * logpa + entropy*0.01)
+        entropy = - tf.reduce_sum(logp * self.p, axis=1)
+
+        # maximize r*logpa
+        self.policy_loss = -tf.reduce_sum(self.td * logpa + 0.01*entropy)
+        self.value_loss = tf.nn.l2_loss(self.r - self.v)
+        self.total_loss = self.policy_loss + self.value_loss
 
     @property
     def trainable_variables(self):
