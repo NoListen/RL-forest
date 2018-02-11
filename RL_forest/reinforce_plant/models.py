@@ -24,6 +24,7 @@ class MlpNetwork(object):
             self.cls = 'mlp'
 
     def _init(self, input_size, num_output, hid_size, num_hid_layers):
+        assert len(input_size) == 1
         self.ob = tf.placeholder(tf.float32, shape=(None,) + input_size, name='obs')
 
         last_out = self.ob

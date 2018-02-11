@@ -1,3 +1,42 @@
+from skimage.transform import resize
+import numpy as np
+import random
+
+
+# resize_shape should include the channels.
+# if not, it'll be a common 2D image
+class ObsProcessor(object):
+    def __init__(self, obs_shape, crop_area = None, resize_shape = None, flatten=True):
+        self.crop_area = crop_area #(x1, y1, x2, y2)
+        self.resize_shape = resize_shape
+        self.flatten = flatten
+
+        # resize rescales 0-255 to 0-1
+        # if you don't want to rescale, use cv2.resize(img, shape, inter_nearest)
+        if resize_shape:
+            shape = resize_shape
+        elif crop_area:
+            shape = (crop_area[3]-crop_area[1], crop_area[2]-crop_area[0], obs_shape[-1])
+        else:
+            shape = obs_shape
+
+        if flatten:
+            self.out_shape = (np.prod(shape), )
+        else:
+            self.out_shape = shape
+
+    # (y, x)
+    def process(self, obs):
+        if self.crop_area:
+            obs = obs[self.crop_area[1]:self.crop_area[3], self.crop_area[0]:self.crop_area[2]]
+        if self.resize_shape:
+            obs = resize(obs, self.resize_shape, order=0) # no interpolation. Can change this.
+        if self.flatten:
+            obs = obs.astype(np.float).ravel()
+        return obs
+
+
+
 def add_vtarg_and_adv(seg, gamma, lam):
     """
     Compute target value using TD(lambda) estimator, and advantage with GAE(lambda)
@@ -59,7 +98,6 @@ def traj_segment_generator(pi, env, obs_processor, horizon=64, stochastic=True):
         cur_ep_len += 1
 
         if done:
-            print("ret:%.2f steps:%i" % (cur_ep_ret, cur_ep_len))
             ep_lens.append(cur_ep_len)
             ep_rets.append(cur_ep_ret)
             cur_ep_ret = 0
@@ -67,3 +105,14 @@ def traj_segment_generator(pi, env, obs_processor, horizon=64, stochastic=True):
 
             ob = env.reset()
             ob = obs_processor.process(ob)
+
+
+def set_global_seeds(i):
+    try:
+        import tensorflow as tf
+    except ImportError:
+        pass
+    else:
+        tf.set_random_seed(i)
+    np.random.seed(i)
+    random.seed(i)

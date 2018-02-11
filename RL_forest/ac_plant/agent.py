@@ -1,4 +1,4 @@
-from models import MlpNetwork
+from models import ConvNetwork
 from utils import *
 import numpy as np
 import tensorflow as tf
@@ -16,7 +16,7 @@ import tensorflow as tf
 class Agent(object):
     def __init__(self, sess, lr, action_dict=None, policy_name="pi", **kargs):
         self.sess = sess
-        self.net = MlpNetwork(name=policy_name, **kargs)
+        self.net = ConvNetwork(name=policy_name, **kargs)
         self.action_dict = action_dict
         self.opt = tf.train.AdamOptimizer(learning_rate=lr,
                                 beta1=0.9, beta2=0.999,epsilon=1e-8).minimize(self.net.policy_loss)

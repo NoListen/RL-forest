@@ -25,6 +25,8 @@ def conv2d(x, num_filters, name, filter_size=(3, 3), stride=(1, 1),
         return tf.nn.conv2d(x, w, stride_shape, pad) + b
 
 
+# TODO check about the conv3 layer.
+# Doubt about some problems
 # modified from https://github.com/openai/universe-starter-agent/model.py
 def conv3d(x, num_filters, name, filter_size=(1, 3, 3), stride=(1, 1, 1),
            pad="SAME", dtype=tf.float32, collections=None):
@@ -171,17 +173,6 @@ class Dynamic_Conv_Actor(Model):
         self.layer_norm = layer_norm
         self.time_step = time_step
 
-    # obs is a set of vector.
-    # Concatenate the unit location and the feature map after the first convolutional layer.
-    #TODO no graident from the critic would result in no gradient in the actor too ???
-    # Are there something correlated.
-
-    # the input is input
-    # mask can be not stored.
-    # then I search through the alive units.
-
-    # the information is also stored in the observation_shape, dtype.
-
     # the differences between static ones and dynamic ones.
     # static [1, 0, 0, 0, 1] dynamic [1, 1, 0, 0, 0]
     # different arrangements of alive units.
@@ -194,12 +185,6 @@ class Dynamic_Conv_Actor(Model):
             if reuse:
                 scope.reuse_variables()
 
-            # TODO USE dynamic data of different lengths ( but need to change the experience replay )
-
-            # split into batch_size
-            # TODO Dynamic data need to be splited. Currently, just use reshape can work!
-            # self.split = tf.placeholder(tf.int32, [None])
-
             # embedding
             x = s
             # [batch_size, myself_num, ms, ms, 1]
@@ -207,17 +192,18 @@ class Dynamic_Conv_Actor(Model):
             u_shape = u.get_shape().as_list()
             # tf.shape maybe also ok
             assert (u_shape[1] == self.time_step)
-            # TODO try different initializer.
-            # the hyper-parameters need to be adjusted
 
             # 40 -> 20
+            # different soldiers share the same gerneral state
             x = conv2d(x, 24, "conv1", (3, 3), (2, 2)) # 4 map
+            #
             u = conv3d(u, 8, "u_conv1", (1, 3, 3), (1, 2, 2)) # 1 map
 
             # u [batch_size*myself_num, ms/2, ms/2, 1] -> [batch_size, myself, ms/2, ms/2, 1]
             # x [batch_size, ms/2, ms/2, c]
             u_list = tf.split(u, self.time_step, axis=1)
             u_list = [tf.squeeze(unit, [1]) for unit in u_list]
+            # Concat the unit location with general state along the channel axis
             ux = tf.stack([tf.concat([x, unit], -1) for unit in u_list], axis=1)
 
             if self.layer_norm:
@@ -296,6 +282,7 @@ class Dynamic_Conv_Critic(Model):
             assert (u_shape[1] == self.time_step)
 
             x = conv2d(x, 24, "conv1", (3, 3), (2, 2))  # 4 map
+            # TODO Notice! Fixing! the conv3 get wrong implementation
             u = conv3d(u, 8, "u_conv1", (1, 3, 3), (1, 2, 2))  # 1 map
 
             u_list = tf.split(u, self.time_step, axis=1)
