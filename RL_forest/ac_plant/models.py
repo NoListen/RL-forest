@@ -3,9 +3,16 @@ import tensorflow as tf
 import numpy as np
 
 
-# cover 2d and 3d
+def normalized_columns_initializer(std=1.0):
+    def _initializer(shape, dtype=None, partition_info=None):
+        out = np.random.randn(*shape).astype(np.float32)
+        out *= std / np.sqrt(np.square(out).sum(axis=0, keepdims=True))
+        return tf.constant(out)
+    return _initializer
+
 def get_w_bound(filter_shape):
-    return np.sqrt(6./(np.prod(filter_shape[:-2]))*np.sum(filter_shape[-2:]))
+    # return np.sqrt(6./(np.prod(filter_shape[:-2]))*np.sum(filter_shape[-2:]))
+    return np.sqrt(6./((np.prod(filter_shape[:-2]))*np.sum(filter_shape[-2:])))
 
 
 # modified from https://github.com/openai/universe-starter-agent/model.py
@@ -21,6 +28,12 @@ def conv2d(x, num_filters, name, filter_size=(3, 3), stride=(1, 1),
         b = tf.get_variable("b", [1, 1, 1, num_filters], initializer=tf.constant_initializer(0.0),
                             collections=collections)
         return tf.nn.conv2d(x, w, stride_shape, pad) + b
+
+
+def linear(x, size, name, initializer=None, bias_init=0):
+    w = tf.get_variable(name + "/w", [x.get_shape()[1], size], initializer=initializer)
+    b = tf.get_variable(name + "/b", [size], initializer=tf.constant_initializer(bias_init))
+    return tf.matmul(x, w) + b
 
 def max_pool(x, filter_size=(2,2), stride=(2, 2)):
     stride_shape = [1, stride[0], stride[1], 1]
@@ -56,19 +69,21 @@ class ConvNetwork(object):
             self.scope = tf.get_variable_scope().name
             self.cls = 'conv'
 
-    def _init(self, input_size, num_output, hid_size, num_hid_layers):
+    def _init(self, input_size, num_output):
         self.ob = tf.placeholder(tf.float32, shape=(None,) + input_size, name='obs')
         last_out = self.ob
 
-        last_out = tf.nn.relu(conv2d(last_out, 32, "conv1", (6, 6), (4, 4)))
-        last_out = max_pool(last_out, (2, 2), (2, 2))
-        last_out = tf.nn.relu(conv2d(last_out, 64, "conv2", (4, 4), (2, 2)))
+        last_out = tf.nn.relu(conv2d(last_out, 32, "conv1", (6, 6), (4, 4))) # 15
+        last_out = max_pool(last_out, (2, 2), (2, 2)) # 8
+        last_out = tf.nn.relu(conv2d(last_out, 64, "conv2", (4, 4), (2, 2))) # 4
         last_out = tf.nn.relu(conv2d(last_out, 64, "conv3", (3, 3), (1, 1)))
         num_feat = np.prod(last_out.shape[1:])
         last_out = tf.reshape(last_out, [-1, num_feat])
 
-        self.p = tf.nn.softmax(tf.layers.dense(last_out, num_output))
+        last_out = tf.nn.relu(tf.layers.dense(last_out, 512))
+                                              # kernel_initializer=tf.truncated_normal_initializer(stddev=0.02)))
 
+        self.p = tf.nn.softmax(tf.layers.dense(last_out, num_output))
         # Critic architecture
         self.v = tf.layers.dense(last_out, 1)
 
@@ -79,14 +94,14 @@ class ConvNetwork(object):
         self.td = tf.placeholder(tf.float32, shape=(None,), name="td")
 
         onehot_action = tf.one_hot(self.action, num_output, 1.0, 0.0, name="action_one_hot") # output_size = num_actions
+
         logp = tf.log(tf.clip_by_value(self.p, 1e-20, 1.0)) # avoid extreme situation
         logpa = tf.reduce_sum(tf.multiply(logp, onehot_action), axis=1)
-
         entropy = - tf.reduce_sum(logp * self.p, axis=1)
 
         # maximize r*logpa
         self.policy_loss = -tf.reduce_sum(self.td * logpa + 0.01*entropy)
-        self.value_loss = tf.nn.l2_loss(self.r - self.v)
+        self.value_loss = 0.5 * tf.nn.l2_loss(self.r - self.v)
         self.total_loss = self.policy_loss + self.value_loss
 
     @property

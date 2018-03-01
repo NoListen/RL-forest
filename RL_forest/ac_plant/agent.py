@@ -11,8 +11,8 @@ import tensorflow as tf
 # kargs include
 # input_size, output_size, hid_size, num_hid_layers
 
+# then you'll know why ppo is good at these tasks
 
-# TODO batch_size may be necessary
 class Agent(object):
     def __init__(self, sess, lr, action_dict=None, policy_name="pi", **kargs):
         self.sess = sess
@@ -28,6 +28,8 @@ class Agent(object):
         # the batch_size is one
         prob = prob[0]
         value = value[0]
+
+        # print("the action prob & value " , prob, value)
 
         if not stochastic:
             action = np.argmax(prob, -1)

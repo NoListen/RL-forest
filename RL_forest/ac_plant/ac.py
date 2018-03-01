@@ -12,8 +12,9 @@ def ac(env, sess, obs_processor, lr, gamma, lam, action_dict, horizon, **kargs):
     seg_gen = traj_segment_generator(pi, env, obs_processor, horizon, stochastic=True)
 
     ep_rets = deque(maxlen=100)
-    ep_steps = deque(maxlen=100)
+    ep_lens = deque(maxlen=100)
     episodes = 0
+
 
     # TODO set terminal state.
     while True:
@@ -21,13 +22,14 @@ def ac(env, sess, obs_processor, lr, gamma, lam, action_dict, horizon, **kargs):
         seg = seg_gen.__next__()
         add_vtarg_and_adv(seg, gamma, lam)
         # output the recent one.
-        if len(seg["ep_ret"]) > 0:
-            ep_rets.extend(seg["ep_ret"])
-            ep_steps.extend(seg["ep_steps"])
-            for i in range(len(seg["ep_ret"])):
+
+        if len(seg["ep_rets"]) > 0:
+            ep_rets.extend(seg["ep_rets"])
+            ep_lens.extend(seg["ep_lens"])
+            for i in range(len(seg["ep_rets"])):
                 print("ep%i ret:%.2f steps:%i average_ret:%.1f average_steps:%.1f" %
-                    (episodes+i+1, ep["ep_ret"][i], ep["ep_steps"][i], np.mean(ep_rets), np.mean(ep_steps)))
-            episodes += len(seg["ep_ret"])
+                    (episodes+i+1, seg["ep_rets"][i], seg["ep_lens"][i], np.mean(ep_rets), np.mean(ep_lens)))
+            episodes += len(seg["ep_rets"])
 
         pi.train(seg)
 

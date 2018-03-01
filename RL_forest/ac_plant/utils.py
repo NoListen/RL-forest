@@ -97,6 +97,8 @@ def traj_segment_generator(pi, env, obs_processor, horizon=64, stochastic=True):
         cur_ep_ret += rew[0]
         cur_ep_len += 1
 
+        t += 1
+
         if done:
             ep_lens.append(cur_ep_len)
             ep_rets.append(cur_ep_ret)
