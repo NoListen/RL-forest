@@ -12,8 +12,9 @@ import pygame
 import random
 import math
 import os
+import numpy as np
 
-# os.environ["SDL_VIDEODRIVER"] = "dummy"
+os.environ["SDL_VIDEODRIVER"] = "dummy"
 
 # constants
 # size of the window
@@ -199,6 +200,7 @@ class PongGame:
         # randomly initialize ball direction
         self.ballAngle = math.radians(0)
 
+        self.img = np.zeros((WINDOW_WIDTH, WINDOW_HEIGHT))
         num = random.randint(0, 1)
 
         if (num == 0):
@@ -251,14 +253,13 @@ class PongGame:
         drawPaddle2(self.paddle2YPos)
         # draw our ball and the score
         drawBall(self.ballXPos, self.ballYPos)
-        drawScore(self.tally1, self.tally2)
+        # drawScore(self.tally1, self.tally2)
         # copies the pixels from our surface to a 3D array, to be used by the DRL algo
-        image_data = pygame.surfarray.array3d(pygame.display.get_surface())[:, :, 0]
-
+        self.img = pygame.surfarray.array3d(pygame.display.get_surface())[:, :, 0]
         # updates the window
-        pygame.display.flip()
+        # pygame.display.flip()
 
-        return image_data
+        return np.zeros((WINDOW_WIDTH, WINDOW_HEIGHT))
 
     # set action to be a tuple
     def step(self, action):
@@ -278,18 +279,20 @@ class PongGame:
         self.tally1 = self.tally1 + score1
         self.tally2 = self.tally2 + score2
 
-        drawScore(self.tally1, self.tally2)
+        # drawScore(self.tally1, self.tally2)
 
         reward1 = score1 - score2
         reward2 = -reward1
 
-        image_data = pygame.surfarray.array3d(pygame.display.get_surface())[:, :, 0]
+        img = pygame.surfarray.array3d(pygame.display.get_surface())[:, :, 0]
+        obs = img - self.img
+        self.img = img
 
-        pygame.display.flip()
+        # pygame.display.flip()
 
         done = self.measure_end()
 
-        data = [image_data, (reward1, reward2), done, (self.tally1, self.tally2)]
+        data = [obs, (reward1, reward2), done, (self.tally1, self.tally2)]
 
         return data
 

@@ -18,7 +18,7 @@ class ObsProcessor(object):
         if resize_shape:
             shape = resize_shape
         elif crop_area:
-            shape = (crop_area[3]-crop_area[1], crop_area[2]-crop_area[0])
+            shape = (crop_area[3]-crop_area[1], crop_area[2]-crop_area[0], obs_shape[-1])
         else:
             shape = obs_shape
 
@@ -32,10 +32,11 @@ class ObsProcessor(object):
         if self.crop_area:
             obs = obs[self.crop_area[1]:self.crop_area[3], self.crop_area[0]:self.crop_area[2]]
         if self.resize_shape:
-            obs = resize(obs, self.resize_shape, order=0) # no interpolation. Can change this.
+            obs = resize(obs, self.resize_shape) # no interpolation. Can change this.
         if self.flatten:
             obs = obs.astype(np.float).ravel()
         return obs
+
 
 def discount(x, gamma):
     """

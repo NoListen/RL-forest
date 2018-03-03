@@ -3,13 +3,6 @@ import tensorflow as tf
 import numpy as np
 
 
-def normalized_columns_initializer(std=1.0):
-    def _initializer(shape, dtype=None, partition_info=None):
-        out = np.random.randn(*shape).astype(np.float32)
-        out *= std / np.sqrt(np.square(out).sum(axis=0, keepdims=True))
-        return tf.constant(out)
-    return _initializer
-
 def get_w_bound(filter_shape):
     # return np.sqrt(6./(np.prod(filter_shape[:-2]))*np.sum(filter_shape[-2:]))
     return np.sqrt(6./((np.prod(filter_shape[:-2]))*np.sum(filter_shape[-2:])))
@@ -29,11 +22,6 @@ def conv2d(x, num_filters, name, filter_size=(3, 3), stride=(1, 1),
                             collections=collections)
         return tf.nn.conv2d(x, w, stride_shape, pad) + b
 
-
-def linear(x, size, name, initializer=None, bias_init=0):
-    w = tf.get_variable(name + "/w", [x.get_shape()[1], size], initializer=initializer)
-    b = tf.get_variable(name + "/b", [size], initializer=tf.constant_initializer(bias_init))
-    return tf.matmul(x, w) + b
 
 def max_pool(x, filter_size=(2,2), stride=(2, 2)):
     stride_shape = [1, stride[0], stride[1], 1]
@@ -73,14 +61,13 @@ class ConvNetwork(object):
         self.ob = tf.placeholder(tf.float32, shape=(None,) + input_size, name='obs')
         last_out = self.ob
 
-        last_out = tf.nn.relu(conv2d(last_out, 32, "conv1", (6, 6), (4, 4))) # 15
-        last_out = max_pool(last_out, (2, 2), (2, 2)) # 8
-        last_out = tf.nn.relu(conv2d(last_out, 64, "conv2", (4, 4), (2, 2))) # 4
-        last_out = tf.nn.relu(conv2d(last_out, 64, "conv3", (3, 3), (1, 1)))
+        last_out = tf.nn.relu(conv2d(last_out, 16, "conv1", (8, 8), (4, 4), pad="VALID"))
+        print(last_out.shape)
+        last_out = tf.nn.relu(conv2d(last_out, 32, "conv2", (4, 4), (2, 2), pad="VALID"))
         num_feat = np.prod(last_out.shape[1:])
         last_out = tf.reshape(last_out, [-1, num_feat])
 
-        last_out = tf.nn.relu(tf.layers.dense(last_out, 512))
+        last_out = tf.nn.relu(tf.layers.dense(last_out, 256))
                                               # kernel_initializer=tf.truncated_normal_initializer(stddev=0.02)))
 
         self.p = tf.nn.softmax(tf.layers.dense(last_out, num_output))

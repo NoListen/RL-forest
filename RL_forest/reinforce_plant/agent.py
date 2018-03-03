@@ -27,6 +27,7 @@ class Agent(object):
         prob = self.sess.run(self.net.p, feed_dict=feed_dict)
         # the batch_size is one
         prob = prob[0]
+        # print("prob  " , prob)
 
         if not stochastic:
             action = np.argmax(prob, -1)

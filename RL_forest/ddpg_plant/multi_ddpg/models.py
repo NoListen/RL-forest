@@ -8,7 +8,8 @@ import numpy as np
 
 # cover 2d and 3d
 def get_w_bound(filter_shape):
-    return np.sqrt(6./(np.prod(filter_shape[:-2]))*np.sum(filter_shape[-2:]))
+    # return np.sqrt(6./(np.prod(filter_shape[:-2]))*np.sum(filter_shape[-2:]))
+    return np.sqrt(6./((np.prod(filter_shape[:-2]))*np.sum(filter_shape[-2:])))
 
 
 # modified from https://github.com/openai/universe-starter-agent/model.py
@@ -23,7 +24,6 @@ def conv2d(x, num_filters, name, filter_size=(3, 3), stride=(1, 1),
         b = tf.get_variable("b", [1, 1, 1, num_filters], initializer=tf.constant_initializer(0.0),
                             collections=collections)
         return tf.nn.conv2d(x, w, stride_shape, pad) + b
-
 
 # TODO check about the conv3 layer.
 # Doubt about some problems
@@ -197,6 +197,9 @@ class Dynamic_Conv_Actor(Model):
             # different soldiers share the same gerneral state
             x = conv2d(x, 24, "conv1", (3, 3), (2, 2)) # 4 map
             #
+            u_shape = u.get_shape
+            u = tf.reshape(u, [])
+            # apply conv2d but multiple timesteps simultaneously
             u = conv3d(u, 8, "u_conv1", (1, 3, 3), (1, 2, 2)) # 1 map
 
             # u [batch_size*myself_num, ms/2, ms/2, 1] -> [batch_size, myself, ms/2, ms/2, 1]

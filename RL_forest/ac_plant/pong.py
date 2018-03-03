@@ -13,8 +13,8 @@ import random
 import math
 import os
 
-# os.environ["SDL_VIDEODRIVER"] = "dummy"
-
+os.environ["SDL_VIDEODRIVER"] = "dummy"
+#
 # constants
 # size of the window
 WINDOW_WIDTH = 400
@@ -251,12 +251,12 @@ class PongGame:
         drawPaddle2(self.paddle2YPos)
         # draw our ball and the score
         drawBall(self.ballXPos, self.ballYPos)
-        drawScore(self.tally1, self.tally2)
+        # drawScore(self.tally1, self.tally2)
         # copies the pixels from our surface to a 3D array, to be used by the DRL algo
         image_data = pygame.surfarray.array3d(pygame.display.get_surface())[:, :, 0]
 
         # updates the window
-        pygame.display.flip()
+        # pygame.display.flip()
 
         return image_data
 
@@ -278,14 +278,14 @@ class PongGame:
         self.tally1 = self.tally1 + score1
         self.tally2 = self.tally2 + score2
 
-        drawScore(self.tally1, self.tally2)
+        # drawScore(self.tally1, self.tally2)
 
         reward1 = score1 - score2
         reward2 = -reward1
 
         image_data = pygame.surfarray.array3d(pygame.display.get_surface())[:, :, 0]
 
-        pygame.display.flip()
+        # pygame.display.flip()
 
         done = self.measure_end()
 
