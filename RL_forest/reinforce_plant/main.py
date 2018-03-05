@@ -5,14 +5,21 @@ import tensorflow as tf
 import config
 from pong import PongGame
 import json
+import os
 
 # lr, gamma, action_dict,
 # def train(env_id, seed, action_mapping, **kargs):
-def train(seed,  **kargs):
+def train(seed,  model_dir, **kargs):
     set_global_seeds(seed)
+    if model_dir[-1] == '/':
+        model_dir = model_dir[:-1]
+
+    if not os.path.exists(model_dir):
+        os.mkdir(model_dir)
+
     env = PongGame(frame_skip=1)
 
-    sess = tf.Session()
+    sess = tf.InteractiveSession()
 
     # only discrete actions
     num_output = config.num_actions
@@ -26,7 +33,7 @@ def train(seed,  **kargs):
 
     obs_processor = make_processor()
     reinforce(env, sess, obs_processor, action_dict=None, input_size=obs_processor.out_shape,
-              num_output=num_output, **kargs)
+              num_output=num_output, model_dir = model_dir, **kargs)
 
 def main():
     import argparse
@@ -37,6 +44,9 @@ def main():
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--num-hid-layers', type=int, default=1)
     parser.add_argument('--hid-size', type=int, default=200)
+    parser.add_argument('--model-dir', default="checkpoints") # where to save the model
+    parser.add_argument('--model-path', default=None) # which model to load
+    parser.add_argument('--phase', default="train")
     # parser.add_argument("--action-mapping", action="store_true", default=False)
     args = vars(parser.parse_args())
     with open('args.json', 'w') as f:

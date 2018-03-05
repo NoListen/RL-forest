@@ -69,6 +69,9 @@ class MlpNetwork(object):
         logpa = tf.reduce_sum(logp*onehot_action, axis=1)
         self.policy_loss = -tf.reduce_sum(self.r * logpa + entropy*0.01)
 
+    def get_variables(self):
+        return tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, self.scope)
+
     @property
     def trainable_variables(self):
         return tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.scope)
@@ -110,6 +113,10 @@ class ConvNetwork(object):
         # maximize r*logpa
         self.policy_loss = -tf.reduce_sum(self.r * logpa + 0.01*entropy)
 
+    def get_variables(self):
+        return tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, self.scope)
+
     @property
     def trainable_variables(self):
         return tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.scope)
+
