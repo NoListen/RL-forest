@@ -90,7 +90,7 @@ def traj_segment_generator(pi, env, obs_processor, horizon=64, stochastic=True):
         news[i] = new
         acs[i] = ac
         # pong's action need to be a tuple
-        ob, rew, done,  _ = env.step([ac, None])
+        ob, rew, new,  _ = env.step([ac, None])
         ob = obs_processor.process(ob)
         rews[i] = rew[0] #( the left side reward)
 
@@ -99,7 +99,7 @@ def traj_segment_generator(pi, env, obs_processor, horizon=64, stochastic=True):
 
         t += 1
 
-        if done:
+        if new:
             ep_lens.append(cur_ep_len)
             ep_rets.append(cur_ep_ret)
             cur_ep_ret = 0

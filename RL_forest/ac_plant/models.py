@@ -4,7 +4,6 @@ import numpy as np
 
 
 def get_w_bound(filter_shape):
-    # return np.sqrt(6./(np.prod(filter_shape[:-2]))*np.sum(filter_shape[-2:]))
     return np.sqrt(6./((np.prod(filter_shape[:-2]))*np.sum(filter_shape[-2:])))
 
 

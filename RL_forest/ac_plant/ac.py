@@ -15,7 +15,6 @@ def ac(env, sess, obs_processor, lr, gamma, lam, action_dict, horizon, **kargs):
     ep_lens = deque(maxlen=100)
     episodes = 0
 
-
     # TODO set terminal state.
     while True:
         # generate one episode
